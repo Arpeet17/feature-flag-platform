@@ -1,0 +1,68 @@
+# ===============================
+# Backend (Spring Boot / Java)
+# ===============================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Gradle (if ever added)
+.gradle/
+build/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Spring config overrides / secrets
+application-local.yml
+application-dev.yml
+application-prod.yml
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# ===============================
+# Frontend (React / Node)
+# ===============================
+node_modules/
+dist/
+build/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dd
+# Environment
+.env
+.env.*
+
+# ===============================
+# Docker
+# ===============================
+docker-compose.override.yml
+
+# ===============================
+# Logs & temporary files
+# ===============================
+logs/
+tmp/
+spring.log
+
+# ===============================
+# OS files
+# ===============================
+.DS_Store
+Thumbs.db
