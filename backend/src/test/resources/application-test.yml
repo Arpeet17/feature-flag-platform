@@ -1,0 +1,5 @@
+ffp:
+  bootstrap:
+    demo-data: false
+  stream:
+    heartbeat: PT1H

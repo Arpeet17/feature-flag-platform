@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: feature-flag-platform
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${FFP_DB_URL:jdbc:h2:mem:ffp;DB_CLOSE_DELAY=-1}
+    username: ${FFP_DB_USER:sa}
+    password: ${FFP_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  jackson:
+    deserialization:
+      # Jackson 3 rejects omitted primitives by default; optional booleans like Clause.negate should default to false.
+      fail-on-null-for-primitives: false
+  h2:
+    console:
+      enabled: ${FFP_H2_CONSOLE:false}
+
+server:
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+ffp:
+  security:
+    jwt:
+      # Development default only. The 'prod' profile requires FFP_JWT_SECRET.
+      secret: ${FFP_JWT_SECRET:dev-only-insecure-secret-change-me-0123456789}
+      ttl: ${FFP_JWT_TTL:8h}
+      issuer: feature-flag-platform
+  cors:
+    allowed-origins: ${FFP_CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+  stream:
+    heartbeat: PT25S
+    timeout: PT30M
+  bootstrap:
+    admin-email: ${FFP_ADMIN_EMAIL:admin@ffp.local}
+    admin-password: ${FFP_ADMIN_PASSWORD:admin123}
+    demo-data: ${FFP_DEMO_DATA:true}
+    demo-sdk-keys:
+      development: sdk-demo-development-0000000000000000000000
+      staging: sdk-demo-staging-000000000000000000000000000
+      production: sdk-demo-production-00000000000000000000000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+logging:
+  structured:
+    format:
+      console: ecs
+ffp:
+  security:
+    jwt:
+      secret: ${FFP_JWT_SECRET}
+  bootstrap:
+    admin-password: ${FFP_ADMIN_PASSWORD:}
+    demo-data: ${FFP_DEMO_DATA:false}
+    demo-sdk-keys: {}
