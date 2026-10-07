@@ -1,0 +1,24 @@
+{
+  "name": "@flagship/sdk",
+  "version": "0.1.0",
+  "description": "Zero-dependency TypeScript SDK for the Flagship feature flag platform, with real-time updates over SSE.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "~5.9",
+    "vitest": "^5.0.3"
+  }
+}
