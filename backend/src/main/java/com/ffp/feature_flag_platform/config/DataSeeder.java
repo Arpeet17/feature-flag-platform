@@ -83,7 +83,7 @@ public class DataSeeder implements ApplicationRunner {
     }
 
     private void seedUsers() {
-        if (users.count() > 0 || bootstrap.adminEmail() == null || bootstrap.adminPassword() == null) {
+        if (users.count() > 0 || isBlank(bootstrap.adminEmail()) || isBlank(bootstrap.adminPassword())) {
             return;
         }
         users.save(new User(bootstrap.adminEmail(), passwordEncoder.encode(bootstrap.adminPassword()), "Admin", Role.ADMIN));
@@ -194,6 +194,10 @@ public class DataSeeder implements ApplicationRunner {
 
     private static Variation variation(JsonNode value, String name) {
         return new Variation(value, name, null);
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     Map<String, String> demoSdkKeys() {

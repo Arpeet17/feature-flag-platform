@@ -4,6 +4,7 @@ import com.ffp.feature_flag_platform.audit.AuditEntry.Action;
 import com.ffp.feature_flag_platform.audit.AuditEntry.ResourceType;
 import com.ffp.feature_flag_platform.audit.AuditService;
 import com.ffp.feature_flag_platform.auth.CurrentUser;
+import com.ffp.feature_flag_platform.cluster.SdkKeysRevokedEvent;
 import com.ffp.feature_flag_platform.common.ConflictException;
 import com.ffp.feature_flag_platform.common.NotFoundException;
 import com.ffp.feature_flag_platform.environment.EnvironmentDtos.CreateEnvironmentRequest;
@@ -34,18 +35,16 @@ public class EnvironmentService {
     private final EnvironmentRepository environments;
     private final FeatureFlagRepository flags;
     private final FlagConfigRepository configs;
-    private final SdkKeyResolver sdkKeyResolver;
     private final AuditService audit;
     private final ApplicationEventPublisher events;
 
     public EnvironmentService(ProjectRepository projects, EnvironmentRepository environments, FeatureFlagRepository flags,
-                              FlagConfigRepository configs, SdkKeyResolver sdkKeyResolver, AuditService audit,
+                              FlagConfigRepository configs, AuditService audit,
                               ApplicationEventPublisher events) {
         this.projects = projects;
         this.environments = environments;
         this.flags = flags;
         this.configs = configs;
-        this.sdkKeyResolver = sdkKeyResolver;
         this.audit = audit;
         this.events = events;
     }
@@ -124,7 +123,7 @@ public class EnvironmentService {
         String oldHint = environment.getSdkKeyHint();
         String sdkKey = SdkKeys.generate();
         environment.assignSdkKey(SdkKeys.hash(sdkKey), SdkKeys.hint(sdkKey));
-        sdkKeyResolver.evict(oldHash);
+        events.publishEvent(SdkKeysRevokedEvent.of(oldHash));
         audit.record(projectKey, environmentKey, ResourceType.ENVIRONMENT, environmentKey, Action.SDK_KEY_ROTATED,
                 "Rotated SDK key", Map.of("sdkKeyHint", oldHint), Map.of("sdkKeyHint", environment.getSdkKeyHint()));
         return new EnvironmentWithSdkKey(EnvironmentResponse.from(environment), sdkKey);
@@ -136,7 +135,7 @@ public class EnvironmentService {
         if (environments.countByProjectId(environment.getProject().getId()) <= 1) {
             throw new ConflictException("A project must have at least one environment");
         }
-        sdkKeyResolver.evict(environment.getSdkKeyHash());
+        events.publishEvent(SdkKeysRevokedEvent.of(environment.getSdkKeyHash()));
         audit.record(projectKey, environmentKey, ResourceType.ENVIRONMENT, environmentKey, Action.DELETED,
                 "Deleted environment '%s'".formatted(environment.getName()), EnvironmentResponse.from(environment), null);
         environments.delete(environment);

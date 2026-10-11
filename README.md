@@ -15,6 +15,7 @@ Full stack: **Spring Boot 4 / Java 21** API, **React 19 + TypeScript** dashboard
 | **Evaluation engine** | Pure, side-effect-free Java engine: individual targets → rules (AND of clauses, first match wins) → default rule; 15 operators incl. regex, SemVer and date comparisons, negation, reusable **segments**, flag **prerequisites** with cycle detection, and an explained **reason** for every result. |
 | **Percentage rollouts** | Deterministic MurmurHash3 bucketing with per-flag salt, 0.001% granularity, custom bucketing attribute (e.g. roll out per `orgId`). Sticky, monotonic on ramp-up, uncorrelated across flags — all three properties are unit-tested statistically. |
 | **Real-time delivery** | Immutable per-environment snapshots cached in memory (no DB on the hot path), invalidated after commit; SSE stream tells SDKs to refresh within milliseconds. |
+| **Horizontal scaling** | Run any number of API instances: invalidations (and SDK key revocations) fan out over **Redis pub/sub**, with a max snapshot age bounding staleness if a message is ever lost. Degrades gracefully — instances boot and serve with Redis down, and resubscribe when it returns. Covered by a test that runs two full instances side by side. |
 | **Safety** | Optimistic locking on targeting (409 instead of lost updates), server-side validation with path-addressed errors, archive-before-delete, dependency checks, production toggle confirmation, every change audited **in the same transaction** with before/after state. |
 | **Security** | JWT for people with an `ADMIN ⊃ EDITOR ⊃ VIEWER` role hierarchy enforced by method security; per-environment SDK keys stored only as SHA-256 hashes, rotatable; RFC 9457 problem responses. |
 | **Ops** | Flyway migrations portable across PostgreSQL & H2, Micrometer metrics (Prometheus), health probes, structured JSON logs in `prod`, layered Docker images, CI on both databases. |
@@ -35,6 +36,8 @@ flowchart LR
     SVC -->|publish EnvironmentsChangedEvent| EVT{{after commit}}
     EVT --> CACHE[(Snapshot cache<br/>per environment)]
     EVT --> SSE[SSE fan-out]
+    EVT -->|pub/sub| REDIS[(Redis)]
+    REDIS -.->|other instances invalidate too| CACHE
     SDKAPI[SDK API<br/>SDK key auth] --> ENG[Evaluation engine<br/>pure Java]
     ENG --> CACHE
   end
@@ -47,7 +50,8 @@ flowchart LR
 ```
 
 Write path: a change is validated, persisted and audited in one transaction. After commit, the affected
-environments' snapshots are dropped and connected SDKs are told to refresh. Read path: evaluation runs
+environments' snapshots are dropped and connected SDKs are told to refresh — first on the instance that made
+the change, then on every other instance via a Redis pub/sub message (`ffp.cluster.mode=redis`). Read path: evaluation runs
 against an immutable in-memory snapshot, so it never touches the database and never sees a half-applied change.
 
 See **[docs/DESIGN.md](docs/DESIGN.md)** for the reasoning behind these choices, trade-offs, and how this would scale out.
@@ -62,6 +66,13 @@ docker compose up --build
 
 - Dashboard → http://localhost:3000 (`admin@ffp.local` / `admin123`, also `editor@…/editor123`, `viewer@…/viewer123`)
 - API docs → http://localhost:8080/swagger-ui.html
+- The stack runs **two API replicas** (`:8080`, `:8081`) behind nginx, kept in sync over Redis. Toggle a flag
+  through one and evaluate through the other:
+
+  ```bash
+  curl -s localhost:8081/api/v1/sdk/evaluate/payments-enabled -H 'X-SDK-Key: sdk-demo-production-00000000000000000000000' \
+    -H 'Content-Type: application/json' -d '{"key":"u"}'
+  ```
 
 ### Local development
 
@@ -79,6 +90,8 @@ cd sdk/js && npm install && npm run build && node examples/node-demo.mjs
 ```
 
 To run the API against PostgreSQL: `FFP_DB_URL=jdbc:postgresql://localhost:5432/ffp FFP_DB_USER=… FFP_DB_PASSWORD=… mvn spring-boot:run`.
+For multi-instance mode add `FFP_CLUSTER_MODE=redis` (plus `FFP_REDIS_HOST`/`FFP_REDIS_PORT`); single-instance mode
+(the default) needs no Redis.
 
 The demo project (`demo-app`) is seeded with a progressive release (`new-checkout`), a dependent feature
 (`checkout-upsell`), an A/B/n experiment (`search-algorithm`), per-plan limits (`max-upload-size-mb`),
@@ -131,7 +144,7 @@ All errors are `application/problem+json`; validation failures (422) include an 
 ## Testing
 
 ```bash
-cd backend && mvn verify          # 102 unit + integration tests (H2 by default; set FFP_DB_URL to run on PostgreSQL)
+cd backend && mvn verify          # 112 unit + integration tests (H2 by default; set FFP_DB_URL to run on PostgreSQL)
 cd frontend && npm test           # component + logic tests (Vitest, Testing Library)
 cd sdk/js && npm test             # SSE parsing, fallbacks, change detection, reconnect backoff
 ```
@@ -140,7 +153,9 @@ Backend tests cover the engine exhaustively (MurmurHash3 reference vectors, roll
 independence, every operator, evaluation precedence, prerequisite cycles, a deterministic race test for the
 snapshot cache) and exercise the full HTTP + security + persistence stack end-to-end (RBAC, optimistic-lock
 conflicts, cache invalidation visible through the SDK API, key rotation, segment and prerequisite integrity).
-CI runs the backend suite against both H2 and PostgreSQL 16.
+A multi-instance test boots two complete instances against one database and Redis, changes a flag through one
+and asserts the other's cache, SSE clients and SDK-key cache all follow (it needs Redis on `localhost:6379`;
+skipped locally without it, mandatory in CI). CI runs the backend suite against both H2 and PostgreSQL 16.
 
 ## Project layout
 
@@ -149,6 +164,7 @@ backend/   Spring Boot API
   evaluation/model    immutable domain records (Targeting, Rule, Clause, Rollout, …)
   evaluation/engine   pure evaluator, bucketing, clause matching, validation — no Spring
   evaluation/runtime  snapshot cache, evaluation service + metrics, SSE fan-out
+  cluster/            change propagation: apply locally after commit, broadcast via Redis pub/sub
   flag/ segment/ environment/ project/ auth/ audit/ sdk/   feature slices (entity, repo, service, controller)
   resources/db/migration   Flyway migrations
 frontend/  React dashboard (TanStack Query, React Router)

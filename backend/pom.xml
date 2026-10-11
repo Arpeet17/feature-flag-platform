@@ -84,6 +84,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Cluster coordination (optional, ffp.cluster.mode=redis) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+
 		<!-- Observability -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

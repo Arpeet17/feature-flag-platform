@@ -17,7 +17,8 @@ import java.util.Map;
 public record AppProperties(@Valid @NotNull Security security,
                             @Valid @NotNull Cors cors,
                             @Valid @NotNull Stream stream,
-                            @Valid @NotNull Bootstrap bootstrap) {
+                            @Valid @NotNull Bootstrap bootstrap,
+                            @Valid @NotNull Cluster cluster) {
 
     public record Security(@Valid @NotNull Jwt jwt) {
     }
@@ -39,6 +40,17 @@ public record AppProperties(@Valid @NotNull Security security,
      * @param timeout   max lifetime of a stream; clients reconnect, which rebalances load across instances
      */
     public record Stream(@NotNull Duration heartbeat, @NotNull Duration timeout) {
+    }
+
+    public enum ClusterMode { LOCAL, REDIS }
+
+    /**
+     * @param mode           LOCAL for a single instance; REDIS to propagate changes between instances via pub/sub
+     * @param channel        Redis pub/sub channel shared by all instances of one deployment
+     * @param maxSnapshotAge upper bound on how stale a cached snapshot may get if a change notification is lost
+     *                       (pub/sub is at-most-once); zero disables the bound
+     */
+    public record Cluster(@NotNull ClusterMode mode, @NotBlank String channel, @NotNull Duration maxSnapshotAge) {
     }
 
     /**

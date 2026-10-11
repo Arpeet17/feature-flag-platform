@@ -18,6 +18,16 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  data:
+    redis:
+      host: ${FFP_REDIS_HOST:localhost}
+      port: ${FFP_REDIS_PORT:6379}
+      password: ${FFP_REDIS_PASSWORD:}
+      # Publishing happens on the request thread after commit; never let a hung Redis stall admin writes for long.
+      timeout: 2s
+      connect-timeout: 2s
+      repositories:
+        enabled: false
   jackson:
     deserialization:
       # Jackson 3 rejects omitted primitives by default; optional booleans like Clause.negate should default to false.
@@ -40,6 +50,10 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    redis:
+      # Only meaningful (and reachable) in cluster mode; set FFP_REDIS_HEALTH=true alongside FFP_CLUSTER_MODE=redis.
+      enabled: ${FFP_REDIS_HEALTH:false}
 
 springdoc:
   swagger-ui:
@@ -57,6 +71,12 @@ ffp:
   stream:
     heartbeat: PT25S
     timeout: PT30M
+  cluster:
+    # local: single instance. redis: propagate cache invalidations between instances via Redis pub/sub.
+    mode: ${FFP_CLUSTER_MODE:local}
+    channel: ${FFP_CLUSTER_CHANNEL:ffp:changes}
+    # Safety net for lost invalidation messages: snapshots are rebuilt at least this often. PT0S disables.
+    max-snapshot-age: ${FFP_MAX_SNAPSHOT_AGE:PT60S}
   bootstrap:
     admin-email: ${FFP_ADMIN_EMAIL:admin@ffp.local}
     admin-password: ${FFP_ADMIN_PASSWORD:admin123}

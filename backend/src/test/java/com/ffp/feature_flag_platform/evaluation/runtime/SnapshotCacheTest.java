@@ -57,6 +57,31 @@ class SnapshotCacheTest {
         assertThat(cache.get(1).version()).isEqualTo(2);
     }
 
+    @Test
+    void maxAgeBoundsStalenessWhenAnInvalidationIsLost() {
+        AtomicInteger loads = new AtomicInteger();
+        java.util.concurrent.atomic.AtomicLong now = new java.util.concurrent.atomic.AtomicLong();
+        SnapshotCache cache = new SnapshotCache(id -> snapshot(loads.incrementAndGet()),
+                java.time.Duration.ofSeconds(60), now::get);
+
+        assertThat(cache.get(1).version()).isEqualTo(1);
+        now.addAndGet(java.time.Duration.ofSeconds(59).toNanos());
+        assertThat(cache.get(1).version()).as("still fresh").isEqualTo(1);
+        now.addAndGet(java.time.Duration.ofSeconds(1).toNanos());
+        assertThat(cache.get(1).version()).as("expired, reloaded").isEqualTo(2);
+        assertThat(cache.get(1).version()).isEqualTo(2);
+    }
+
+    @Test
+    void zeroMaxAgeNeverExpires() {
+        AtomicInteger loads = new AtomicInteger();
+        java.util.concurrent.atomic.AtomicLong now = new java.util.concurrent.atomic.AtomicLong();
+        SnapshotCache cache = new SnapshotCache(id -> snapshot(loads.incrementAndGet()), java.time.Duration.ZERO, now::get);
+        cache.get(1);
+        now.addAndGet(java.time.Duration.ofDays(365).toNanos());
+        assertThat(cache.get(1).version()).isEqualTo(1);
+    }
+
     private static void await(CountDownLatch latch) {
         try {
             latch.await(5, TimeUnit.SECONDS);

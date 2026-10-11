@@ -74,6 +74,37 @@ Evaluation volume is orders of magnitude higher than write volume, so reads must
   a concurrent reader rebuild from the *old* data; invalidating on rollback would be wasteful. The loader uses
   `REQUIRES_NEW` because it may run inside that after-commit callback.
 
+### Keeping several instances in sync (`ffp.cluster.mode=redis`)
+
+Each instance has its own snapshot cache, so a change made through instance A must also invalidate B's.
+
+* **Apply locally, then broadcast.** After commit, `ChangePropagator` applies the change to its own instance
+  (invalidate, notify its SSE clients, revoke SDK keys) and then publishes a `ClusterMessage` on a Redis
+  channel. Other instances run the *same* `LocalChangeApplier`; each ignores messages carrying its own
+  instance id. Applying locally first gives the person who made the change read-your-writes on that instance
+  even if Redis is slow or down.
+* **The message is a hint, not data.** It carries only environment ids ("this changed, reload it"); the
+  database stays the single source of truth. That makes messages idempotent and order-insensitive, which is
+  why plain pub/sub is enough — no Kafka or Redis Streams with offsets and consumer groups.
+* **Pub/sub is at-most-once**, so losses are bounded, not prevented: snapshots also have a maximum age
+  (`ffp.cluster.max-snapshot-age`, default 60 s). Normal propagation takes milliseconds; the worst case for
+  a lost message is one max-age. Rebuilding each environment once a minute costs two queries.
+* **SDK key revocation rides the same channel**, so a rotated key stops working on every instance
+  immediately instead of after the per-instance resolver cache TTL.
+* **Failure modes, all exercised by hand and in tests:**
+  * *Redis down at startup* — the listener container would subscribe eagerly and fail the boot, so it is
+    started by `ClusterSubscription` on a background thread with exponential backoff (1 s → 30 s). Instances
+    boot and serve; evaluations never need Redis. (A failed `start()` leaves the container believing it is
+    running, so every attempt resets it and checks `isListening()` before declaring success.)
+  * *Redis restarts later* — the container resubscribes by itself (≈5 s).
+  * *Publish fails* — logged and counted (`ffp.cluster.messages{outcome="publish_failed"}`), never thrown:
+    the change is committed, so failing the request would be a lie. Command timeouts are 2 s because
+    publishing runs on the request thread.
+* **Alternatives considered.** PostgreSQL `LISTEN/NOTIFY` would avoid a second piece of infrastructure, but it
+  needs a dedicated non-pooled connection and doesn't exist on H2; Redis is ubiquitous, and the broadcaster is
+  an interface, so swapping transports is one class. Short TTLs alone (no messaging) were rejected because a
+  kill switch that takes a minute to apply is not a kill switch.
+
 ## 4. Real-time updates (SSE)
 
 SDKs keep one `GET /api/v1/sdk/stream` connection. On change, the server sends
@@ -129,12 +160,12 @@ SDKs keep one `GET /api/v1/sdk/stream` connection. On change, the server sends
 
 ## 8. Scaling out — what would change
 
-The current build is a single deployable that scales vertically comfortably (evaluation is an in-memory map
-lookup plus a few comparisons). For horizontal scale:
+The API is stateless apart from its caches, which stay coherent over Redis, so it scales horizontally behind
+any load balancer without sticky sessions (`docker compose` runs two replicas behind nginx). Beyond that:
 
 | Concern | Today | At scale |
 |---|---|---|
-| Cache invalidation across instances | In-process event after commit | Publish the same `EnvironmentsChangedEvent` over PostgreSQL `LISTEN/NOTIFY` or Redis pub/sub; every instance runs the existing `ChangePropagator`. Nothing else changes. |
+| Cache invalidation across instances | **Done:** Redis pub/sub + max snapshot age (see §3) | At very large instance counts, put a relay tier in front so only a few processes subscribe. |
 | SSE connections | Held by API instances | Separate stateless "relay" tier or a managed pub/sub edge; streams already recycle every 30 min to rebalance. |
 | Evaluation latency | One HTTP call per context | Ship rulesets to server-side SDKs and evaluate locally (the engine is pure and portable; MurmurHash3 is a cross-language contract) — zero network on the hot path. |
 | Evaluation stats | In-memory per instance | Batch to a time-series store / Kafka for experiment analysis. |
