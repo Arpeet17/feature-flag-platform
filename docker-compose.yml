@@ -1,0 +1,75 @@
+# One-command local stack: PostgreSQL + Redis + two API replicas behind nginx + dashboard.
+#   docker compose up --build
+# The replicas share the database and keep their in-memory caches in sync over Redis pub/sub:
+# toggle a flag and both instances serve the change (try the SDK endpoints on :8080 and :8081).
+# Dashboard: http://localhost:3000  (admin@ffp.local / admin123)
+# API docs:  http://localhost:8080/swagger-ui.html
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ffp
+      POSTGRES_USER: ffp
+      POSTGRES_PASSWORD: ffp
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ffp -d ffp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: &backend-env
+      FFP_DB_URL: jdbc:postgresql://postgres:5432/ffp
+      FFP_DB_USER: ffp
+      FFP_DB_PASSWORD: ffp
+      FFP_JWT_SECRET: ${FFP_JWT_SECRET:-local-compose-secret-please-change-0123456789}
+      FFP_ADMIN_PASSWORD: ${FFP_ADMIN_PASSWORD:-admin123}
+      FFP_DEMO_DATA: "true"
+      FFP_CORS_ORIGINS: http://localhost:3000
+      FFP_CLUSTER_MODE: redis
+      FFP_REDIS_HOST: redis
+      FFP_REDIS_HEALTH: "true"
+    ports:
+      - "8080:8080"
+
+  # Second instance: same image and database. It doesn't seed data (the first instance does).
+  backend-replica:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      FFP_ADMIN_EMAIL: ""
+      FFP_DEMO_DATA: "false"
+    ports:
+      - "8081:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+      - backend-replica
+    ports:
+      - "3000:80"
+
+volumes:
+  pgdata:
