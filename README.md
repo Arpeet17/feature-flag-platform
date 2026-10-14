@@ -18,6 +18,7 @@ Full stack: **Spring Boot 4 / Java 21** API, **React 19 + TypeScript** dashboard
 | **Horizontal scaling** | Run any number of API instances: invalidations (and SDK key revocations) fan out over **Redis pub/sub**, with a max snapshot age bounding staleness if a message is ever lost. Degrades gracefully — instances boot and serve with Redis down, and resubscribe when it returns. Covered by a test that runs two full instances side by side. |
 | **Safety** | Optimistic locking on targeting (409 instead of lost updates), server-side validation with path-addressed errors, archive-before-delete, dependency checks, production toggle confirmation, every change audited **in the same transaction** with before/after state. |
 | **Security** | JWT for people with an `ADMIN ⊃ EDITOR ⊃ VIEWER` role hierarchy enforced by method security; per-environment SDK keys stored only as SHA-256 hashes, rotatable; RFC 9457 problem responses. |
+| **Performance** | Load-tested with Gatling: **4,000 req/s with zero errors** on a shared 4-vCPU box (p99 7 ms at 1,000 req/s); evaluating all flags for a user takes **25 µs** (median) in-process; a cache rebuild every 2 s under load moves p99 by only ~2 ms. Methodology and caveats in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). |
 | **Ops** | Flyway migrations portable across PostgreSQL & H2, Micrometer metrics (Prometheus), health probes, structured JSON logs in `prod`, layered Docker images, CI on both databases. |
 | **Dashboard** | Flag list with per-environment kill switches, full targeting editor (rules, segments, rollouts, prerequisites), environment promotion, evaluation debugger, audit log with JSON diffs, stale-flag detection. |
 
@@ -147,6 +148,7 @@ All errors are `application/problem+json`; validation failures (422) include an 
 cd backend && mvn verify          # 112 unit + integration tests (H2 by default; set FFP_DB_URL to run on PostgreSQL)
 cd frontend && npm test           # component + logic tests (Vitest, Testing Library)
 cd sdk/js && npm test             # SSE parsing, fallbacks, change detection, reconnect backoff
+cd loadtest && mvn gatling:test -Dsimulation=ffp.loadtest.SdkEvaluationSimulation -Drps=1000   # against a running API
 ```
 
 Backend tests cover the engine exhaustively (MurmurHash3 reference vectors, rollout distribution/stickiness/
@@ -169,5 +171,6 @@ backend/   Spring Boot API
   resources/db/migration   Flyway migrations
 frontend/  React dashboard (TanStack Query, React Router)
 sdk/js/    TypeScript SDK
+loadtest/  Gatling load tests (steady-state SDK traffic; SDK traffic while flags change)
 docs/      design notes and screenshots
 ```

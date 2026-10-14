@@ -1,0 +1,66 @@
+name: Load test
+
+# Manual only: shared CI runners are too noisy for load tests to gate every PR.
+on:
+  workflow_dispatch:
+    inputs:
+      simulation:
+        description: Simulation class
+        type: choice
+        options: [SdkEvaluationSimulation, ChangesUnderLoadSimulation]
+        default: SdkEvaluationSimulation
+      rps:
+        description: SDK requests per second
+        default: "500"
+      duration:
+        description: Measurement duration in seconds
+        default: "60"
+      p99Ms:
+        description: Fail if p99 latency exceeds this (ms)
+        default: "100"
+
+jobs:
+  loadtest:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ffp
+          POSTGRES_USER: ffp
+          POSTGRES_PASSWORD: ffp
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ffp" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Build and start the API
+        working-directory: backend
+        env:
+          FFP_DB_URL: jdbc:postgresql://localhost:5432/ffp
+          FFP_DB_USER: ffp
+          FFP_DB_PASSWORD: ffp
+        run: |
+          mvn -B -q package -DskipTests
+          nohup java -Xmx1g -jar target/feature-flag-platform-*.jar > app.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf localhost:8080/actuator/health && exit 0; sleep 2; done
+          cat app.log; exit 1
+      - name: Warm up
+        working-directory: loadtest
+        run: mvn -B -q gatling:test -Dsimulation=ffp.loadtest.SdkEvaluationSimulation -Drps=300 -Dduration=20 -Dp95Ms=10000 -Dp99Ms=10000
+      - name: Run ${{ inputs.simulation }}
+        working-directory: loadtest
+        run: >-
+          mvn -B gatling:test -Dsimulation=ffp.loadtest.${{ inputs.simulation }}
+          -Drps=${{ inputs.rps }} -Dduration=${{ inputs.duration }}
+          -Dp95Ms=${{ inputs.p99Ms }} -Dp99Ms=${{ inputs.p99Ms }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gatling-report
+          path: loadtest/target/gatling
