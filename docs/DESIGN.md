@@ -145,6 +145,38 @@ cost. `LocalFlagClient` downloads the environment's ruleset (`GET /api/v1/sdk/ru
   server-side SDK keys (browser SDKs keep using remote evaluation). Locally evaluated flags don't reach the
   server's evaluation counters; SDK-reported exposure events (see experimentation) close that gap.
 
+## 4b. Experimentation
+
+A flag with a percentage rollout is already a randomized controlled trial; the platform adds the measurement.
+
+* **Data model.** SDKs send *exposures* (user saw variation v of flag f, and whether a rollout assigned it) and
+  *custom events* (`track('purchase', user, 49.0)`). Exposures are stored once per user and flag, **first exposure
+  wins** (intention-to-treat): if a rollout changes mid-test, users stay in their original arm. A conversion counts
+  only if it happened **after** the user's exposure.
+* **Only randomized users are analysed.** Users served by a targeting rule ("staff get the new checkout") were not
+  randomly assigned; including them biases the comparison. They're excluded and their count is reported.
+* **Statistics** (`experiment/stats`, no dependencies, every number tested against SciPy/statsmodels):
+  Wilson score intervals per arm (well-behaved near 0% and for small n, unlike Wald); pooled two-proportion
+  z-test and unpooled CI for conversion lift; Welch's t-test with Welch–Satterthwaite df for means (revenue per
+  user doesn't have equal variances across arms); Bonferroni correction for A/B/n; and for inconclusive results
+  the users per arm needed for 80% power, so "keep running" comes with a number.
+* **Sample ratio mismatch** is the check that separates a toy from a real platform. If a 50/50 split delivers
+  5,000 vs 5,500 users (χ² p = 1e-6), something drops or duplicates exposures for one arm — typically the new
+  code path crashing before it logs — and *any* measured lift is suspect. The analysis runs a χ² goodness-of-fit
+  test against the configured split (p < 0.001 → mismatch), and the UI replaces every verdict with
+  "Untrusted (SRM)". The seeded `checkout-revenue` experiment plants exactly this bug (15% of treatment exposures
+  lost) to show a highly "significant" lift being correctly distrusted.
+* **Guardrails in the SDK.** Exposures are deduplicated in memory (a flag read on every request costs one
+  event, not thousands), events are batched (≤1,000 per request), failed batches are re-queued with a bounded
+  queue (oldest dropped and counted), invalid batches are not retried, and the flush timer is `unref`'d so
+  analytics never keeps a Node process alive. Server-side, future timestamps are clamped and events older than
+  7 days rejected so late data can't silently rewrite results people already acted on.
+* **Trade-offs.** Results are computed on read with one aggregate query (sub-second at ~50k exposures). At
+  scale this becomes an incremental pre-aggregation per (experiment, variation, day) or a columnar store fed by
+  a stream; the analyzer only needs the per-arm sufficient statistics (n, conversions, Σx, Σx²), which is exactly
+  what makes that migration easy. Peeking (re-checking a fixed-horizon test daily) inflates false positives;
+  sequential testing (e.g. mSPRT) is the principled fix and the natural next step.
+
 ## 5. Write path: correctness and safety
 
 * **Optimistic locking**: targeting writes must include the version the editor loaded. A mismatch returns

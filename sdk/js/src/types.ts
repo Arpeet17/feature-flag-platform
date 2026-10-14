@@ -38,6 +38,12 @@ export interface FlagClientOptions {
   /** Initial reconnect delay in ms; grows exponentially with jitter up to maxReconnectDelayMs. */
   reconnectDelayMs?: number;
   maxReconnectDelayMs?: number;
+  /** Report exposures and custom events for experiments. Default true. */
+  sendEvents?: boolean;
+  /** How often queued events are sent. Default 5000 ms. */
+  flushIntervalMs?: number;
+  /** Events kept in memory while the platform is unreachable; oldest are dropped beyond this. Default 10000. */
+  maxEventQueueSize?: number;
   /** Injectable for tests and non-standard runtimes. */
   fetch?: typeof fetch;
   logger?: Pick<Console, 'warn' | 'debug'>;

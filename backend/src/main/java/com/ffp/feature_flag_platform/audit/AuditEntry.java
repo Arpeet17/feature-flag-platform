@@ -18,7 +18,7 @@ import java.time.Instant;
 @Table(name = "audit_log")
 public class AuditEntry {
 
-    public enum ResourceType { PROJECT, ENVIRONMENT, FLAG, FLAG_CONFIG, SEGMENT, USER }
+    public enum ResourceType { PROJECT, ENVIRONMENT, FLAG, FLAG_CONFIG, SEGMENT, USER, EXPERIMENT, ROLLOUT }
 
     public enum Action { CREATED, UPDATED, DELETED, ARCHIVED, RESTORED, TOGGLED, TARGETING_UPDATED, SDK_KEY_ROTATED }
 

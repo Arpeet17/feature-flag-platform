@@ -153,11 +153,13 @@ describe('FlagClient', () => {
       client = new FlagClient({ baseUrl: 'https://flags.test', sdkKey: 'k', fetch: server.fetch, reconnectDelayMs: 100 });
       client.on('error', () => {});
       await client.identify({ key: 'u' });
-      await vi.advanceTimersByTimeAsync(0);
-      expect(server.streams()).toBe(1);
+      // Let the failed first attempt settle (its error handling spans several microtask hops).
+      await vi.waitFor(() => expect(server.streams()).toBe(1));
 
-      // Full jitter: the first retry happens within reconnectDelayMs.
-      await vi.advanceTimersByTimeAsync(100);
+      // Full jitter: the first retry happens within reconnectDelayMs of virtual time.
+      for (let elapsed = 0; elapsed <= 100 && server.streams() < 2; elapsed += 5) {
+        await vi.advanceTimersByTimeAsync(5);
+      }
       expect(server.streams()).toBe(2);
     } finally {
       vi.useRealTimers();

@@ -6,12 +6,19 @@ export type ResolvedOptions = Required<Omit<FlagClientOptions, 'logger'>> & Pick
 export function resolveOptions(options: FlagClientOptions): ResolvedOptions {
   return {
     streaming: true,
+    sendEvents: true,
+    flushIntervalMs: 5_000,
+    maxEventQueueSize: 10_000,
     reconnectDelayMs: 1_000,
     maxReconnectDelayMs: 30_000,
     fetch: globalThis.fetch.bind(globalThis),
     ...options,
     baseUrl: options.baseUrl.replace(/\/+$/, ''),
   };
+}
+
+export function eventSettings(o: ResolvedOptions) {
+  return { sendEvents: o.sendEvents, flushIntervalMs: o.flushIntervalMs, maxQueueSize: o.maxEventQueueSize };
 }
 
 export const toError = (e: unknown): Error => (e instanceof Error ? e : new Error(String(e)));

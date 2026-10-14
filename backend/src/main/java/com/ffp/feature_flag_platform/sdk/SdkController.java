@@ -13,7 +13,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import com.ffp.feature_flag_platform.evaluation.runtime.EnvironmentSnapshot;
 import com.ffp.feature_flag_platform.sdk.SdkDtos.RulesetResponse;
+import com.ffp.feature_flag_platform.experiment.EventIngestionService;
+import com.ffp.feature_flag_platform.experiment.ExperimentDtos.EventBatch;
+import com.ffp.feature_flag_platform.experiment.ExperimentDtos.IngestResult;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.context.request.WebRequest;
@@ -35,10 +40,12 @@ public class SdkController {
 
     private final EvaluationService evaluation;
     private final FlagStreamService stream;
+    private final EventIngestionService ingestion;
 
-    public SdkController(EvaluationService evaluation, FlagStreamService stream) {
+    public SdkController(EvaluationService evaluation, FlagStreamService stream, EventIngestionService ingestion) {
         this.evaluation = evaluation;
         this.stream = stream;
+        this.ingestion = ingestion;
     }
 
     @Operation(summary = "Evaluate all (or the requested) flags for a context")
@@ -54,6 +61,13 @@ public class SdkController {
     public FlagValue evaluateOne(@AuthenticationPrincipal SdkEnvironment environment, @PathVariable String flagKey,
                                  @Valid @RequestBody ContextDto context) {
         return FlagValue.from(evaluation.evaluateOne(environment.environmentId(), flagKey, context.toDomain()));
+    }
+
+    @Operation(summary = "Ingest a batch of exposure and custom events (up to 1000)")
+    @PostMapping("/events")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public IngestResult events(@AuthenticationPrincipal SdkEnvironment environment, @Valid @RequestBody EventBatch batch) {
+        return ingestion.ingest(environment.environmentId(), batch.events());
     }
 
     @Operation(summary = "The environment's full ruleset for SDKs that evaluate locally",

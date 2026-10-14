@@ -5,6 +5,8 @@ import { Spinner } from './components/ui';
 import { AuditPage } from './pages/AuditPage';
 import { DebuggerPage } from './pages/DebuggerPage';
 import { EnvironmentsPage } from './pages/EnvironmentsPage';
+import { ExperimentDetailPage } from './pages/ExperimentDetailPage';
+import { ExperimentsPage } from './pages/ExperimentsPage';
 import { FlagDetailPage } from './pages/FlagDetailPage';
 import { FlagsPage } from './pages/FlagsPage';
 import { LoginPage } from './pages/LoginPage';
@@ -33,6 +35,8 @@ export function App() {
             <Route path="flags" element={<FlagsPage />} />
             <Route path="flags/:flagKey" element={<FlagDetailPage />} />
             <Route path="segments" element={<SegmentsPage />} />
+            <Route path="experiments" element={<ExperimentsPage />} />
+            <Route path="experiments/:experimentKey" element={<ExperimentDetailPage />} />
             <Route path="environments" element={<EnvironmentsPage />} />
             <Route path="audit" element={<AuditPage />} />
             <Route path="debugger" element={<DebuggerPage />} />

@@ -231,3 +231,67 @@ export interface EvaluationResponse {
   version: number;
   flags: Record<string, FlagValue>;
 }
+
+export type MetricType = 'CONVERSION' | 'MEAN';
+export type Verdict = 'BETTER' | 'WORSE' | 'INCONCLUSIVE' | 'INSUFFICIENT_DATA';
+
+export interface ArmResult {
+  variation: number;
+  label: string;
+  users: number;
+  conversions: number;
+  estimate: number;
+  ciLow: number;
+  ciHigh: number;
+}
+
+export interface Comparison {
+  variation: number;
+  label: string;
+  absoluteLift: number;
+  relativeLift?: number;
+  ciLow: number;
+  ciHigh: number;
+  pValue: number;
+  significant: boolean;
+  verdict: Verdict;
+  usersNeededPerArm?: number;
+}
+
+export interface SampleRatioCheck {
+  checked: boolean;
+  pValue?: number;
+  mismatch: boolean;
+  expectedShare?: Record<string, number>;
+  observedShare: Record<string, number>;
+}
+
+export interface Analysis {
+  metricType: MetricType;
+  higherIsBetter: boolean;
+  controlVariation: number;
+  alpha: number;
+  adjustedAlpha: number;
+  arms: ArmResult[];
+  comparisons: Comparison[];
+  sampleRatio: SampleRatioCheck;
+  warnings: string[];
+}
+
+export interface Experiment {
+  key: string;
+  name: string;
+  hypothesis: string | null;
+  environmentKey: string;
+  environmentName: string;
+  flagKey: string;
+  metricEventKey: string;
+  metricType: MetricType;
+  higherIsBetter: boolean;
+  controlVariation: number;
+  status: 'RUNNING' | 'STOPPED';
+  startedAt: string;
+  stoppedAt: string | null;
+  createdBy: string | null;
+  results: { from: string; to: string; excludedNonRandomized: number; analysis: Analysis } | null;
+}

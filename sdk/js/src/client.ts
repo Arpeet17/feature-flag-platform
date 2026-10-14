@@ -1,4 +1,5 @@
-import { ChangeStream, Coalescer, Emitter, REASONS, isBool, isJson, isNumber, isString, resolveOptions, sameTypeAs, typedDetail, type ResolvedOptions } from './internal.js';
+import { EventProcessor } from './events.js';
+import { ChangeStream, Coalescer, Emitter, REASONS, eventSettings, isBool, isJson, isNumber, isString, resolveOptions, sameTypeAs, typedDetail, type ResolvedOptions } from './internal.js';
 import type { ChangeEvent, ClientEvents, EvaluationContext, EvaluationDetail, FlagClientOptions, FlagValue, JsonValue } from './types.js';
 
 /**
@@ -17,6 +18,7 @@ export class FlagClient {
   private readonly events: Emitter<ClientEvents>;
   private readonly refresher: Coalescer;
   private readonly stream: ChangeStream;
+  private readonly events$: EventProcessor;
   private context: EvaluationContext | null = null;
   private flags: Record<string, FlagValue> = {};
   private version = -1;
@@ -31,6 +33,7 @@ export class FlagClient {
       // 'ready' after a reconnect: catch up on anything missed while disconnected.
       if (event === 'flags-changed' || version !== this.version) void this.refresher.run();
     }, (e) => this.events.emit('error', e));
+    this.events$ = new EventProcessor(this.options, eventSettings(this.options), (e) => this.events.emit('error', e));
   }
 
   /** Sets the context and loads its evaluations. Starts streaming on first call. */
@@ -76,17 +79,32 @@ export class FlagClient {
     return Object.fromEntries(Object.entries(this.flags).map(([k, v]) => [k, v.value]));
   }
 
+  /** Records a custom event for the current context (e.g. 'purchase', with an optional value). */
+  track(eventKey: string, value?: number): void {
+    if (this.context) this.events$.track(eventKey, this.context.key, value);
+  }
+
+  flush(): Promise<void> {
+    return this.events$.flush();
+  }
+
   on<K extends keyof ClientEvents>(event: K, listener: (payload: ClientEvents[K]) => void): () => void {
     return this.events.on(event, listener);
   }
 
-  close(): void {
+  /** Stops streaming and flushes queued events. */
+  async close(): Promise<void> {
     this.stream.close();
+    await this.events$.close();
   }
 
   private detail<T>(key: string, fallback: T, isType: (v: unknown) => v is T): EvaluationDetail<T> {
     if (!this.ready) return { value: fallback, variation: null, reason: REASONS.NOT_READY };
-    return typedDetail(this.flags[key], fallback, isType);
+    const found = this.flags[key];
+    if (found && found.variation != null && this.context) {
+      this.events$.exposure(key, this.context.key, found.variation, found.reason.inRollout === true);
+    }
+    return typedDetail(found, fallback, isType);
   }
 
   private async fetchEvaluations(): Promise<void> {

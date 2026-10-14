@@ -1,6 +1,7 @@
 import { Evaluator } from './engine/evaluator.js';
 import type { Ruleset } from './engine/model.js';
-import { ChangeStream, Coalescer, Emitter, REASONS, isBool, isJson, isNumber, isString, resolveOptions, sameTypeAs, typedDetail, type ResolvedOptions } from './internal.js';
+import { EventProcessor } from './events.js';
+import { ChangeStream, Coalescer, Emitter, REASONS, eventSettings, isBool, isJson, isNumber, isString, resolveOptions, sameTypeAs, typedDetail, type ResolvedOptions } from './internal.js';
 import type { ClientEvents, EvaluationContext, EvaluationDetail, FlagClientOptions, JsonValue } from './types.js';
 
 /**
@@ -18,6 +19,7 @@ export class LocalFlagClient {
   private readonly events: Emitter<ClientEvents>;
   private readonly refresher: Coalescer;
   private readonly stream: ChangeStream;
+  private readonly events$: EventProcessor;
   private evaluator: Evaluator | null = null;
   private ruleset: Ruleset | null = null;
   private etag: string | null = null;
@@ -29,6 +31,7 @@ export class LocalFlagClient {
     this.stream = new ChangeStream(this.options, (event, version) => {
       if (event === 'flags-changed' || version !== this.ruleset?.version) void this.refresher.run();
     }, (e) => this.events.emit('error', e));
+    this.events$ = new EventProcessor(this.options, eventSettings(this.options), (e) => this.events.emit('error', e));
   }
 
   /** Loads the ruleset (rejects if the first load fails) and starts listening for changes. */
@@ -78,17 +81,30 @@ export class LocalFlagClient {
     return Object.fromEntries(Object.keys(this.ruleset.flags).sort().map((k) => [k, evaluator.evaluate(k, context).value]));
   }
 
+  /** Records a custom event (e.g. 'purchase', with an optional numeric value) for experiment metrics. */
+  track(eventKey: string, context: EvaluationContext, value?: number): void {
+    this.events$.track(eventKey, context.key, value);
+  }
+
+  /** Sends queued events now (e.g. before a serverless function returns). */
+  flush(): Promise<void> {
+    return this.events$.flush();
+  }
+
   on<K extends keyof ClientEvents>(event: K, listener: (payload: ClientEvents[K]) => void): () => void {
     return this.events.on(event, listener);
   }
 
-  close(): void {
+  /** Stops streaming and flushes queued events. */
+  async close(): Promise<void> {
     this.stream.close();
+    await this.events$.close();
   }
 
   private detail<T>(key: string, context: EvaluationContext, fallback: T, isType: (v: unknown) => v is T): EvaluationDetail<T> {
     if (!this.evaluator) return { value: fallback, variation: null, reason: REASONS.NOT_READY };
     const result = this.evaluator.evaluate(key, context);
+    if (result.variation !== null) this.events$.exposure(key, context.key, result.variation, result.reason.inRollout === true);
     return typedDetail(result.reason.errorKind === 'FLAG_NOT_FOUND' ? undefined : result, fallback, isType);
   }
 

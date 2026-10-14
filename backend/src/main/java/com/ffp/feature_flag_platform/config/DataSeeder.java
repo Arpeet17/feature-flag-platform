@@ -57,10 +57,14 @@ public class DataSeeder implements ApplicationRunner {
     private final FlagService flags;
     private final SegmentService segments;
     private final TransactionTemplate tx;
+    private final com.ffp.feature_flag_platform.environment.EnvironmentRepository environments;
+    private final com.ffp.feature_flag_platform.experiment.DemoExperimentSeeder experimentSeeder;
 
     public DataSeeder(AppProperties properties, UserRepository users, PasswordEncoder passwordEncoder,
                       ProjectRepository projectRepository, ProjectService projects, FlagService flags,
-                      SegmentService segments, TransactionTemplate tx) {
+                      SegmentService segments, TransactionTemplate tx,
+                      com.ffp.feature_flag_platform.environment.EnvironmentRepository environments,
+                      com.ffp.feature_flag_platform.experiment.DemoExperimentSeeder experimentSeeder) {
         this.bootstrap = properties.bootstrap();
         this.users = users;
         this.passwordEncoder = passwordEncoder;
@@ -69,17 +73,26 @@ public class DataSeeder implements ApplicationRunner {
         this.flags = flags;
         this.segments = segments;
         this.tx = tx;
+        this.environments = environments;
+        this.experimentSeeder = experimentSeeder;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        tx.executeWithoutResult(status -> {
+        boolean seededProject = Boolean.TRUE.equals(tx.execute(status -> {
             seedUsers();
             if (bootstrap.demoData() && !projectRepository.existsByKey(DEMO_PROJECT)) {
                 seedDemoProject();
-                log.info("Seeded demo project '{}'", DEMO_PROJECT);
+                return true;
             }
-        });
+            return false;
+        }));
+        if (seededProject) {
+            // Separate transaction: experiment traffic is assigned by the real evaluation engine, whose
+            // snapshot loader runs in its own transaction and can only see the project once committed.
+            tx.executeWithoutResult(status -> seedExperiments());
+            log.info("Seeded demo project '{}'", DEMO_PROJECT);
+        }
     }
 
     private void seedUsers() {
@@ -164,6 +177,12 @@ public class DataSeeder implements ApplicationRunner {
         for (String env : List.of("development", "staging", "production")) {
             target("payments-enabled", env, true, Targeting.simple(0, 1));
         }
+    }
+
+    private void seedExperiments() {
+        var project = projectRepository.findByKey(DEMO_PROJECT).orElseThrow();
+        var production = environments.findByProjectIdAndKey(project.getId(), "production").orElseThrow();
+        experimentSeeder.seed(project, production);
     }
 
     private void createBoolean(String key, String name, String description, Set<String> tags, boolean temporary) {

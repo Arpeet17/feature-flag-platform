@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
-  AuditEntry, Environment, EnvironmentWithSdkKey, EvaluationResponse, Flag, FlagConfig, FlagSummary, FlagType,
+  AuditEntry, Environment, Experiment, MetricType, EnvironmentWithSdkKey, EvaluationResponse, Flag, FlagConfig, FlagSummary, FlagType,
   Page, Project, ProjectCreated, Role, Segment, SegmentRule, Targeting, User, Variation,
 } from './types';
 
@@ -15,6 +15,7 @@ export const keys = {
   segments: (p: string) => ['projects', p, 'segments'] as const,
   audit: (p: string) => ['projects', p, 'audit'] as const,
   users: ['users'] as const,
+  experiments: (p: string) => ['projects', p, 'experiments'] as const,
 };
 
 // ---------------------------------------------------------------- projects & environments
@@ -254,6 +255,47 @@ export function useUpdateUserRole() {
   return useMutation({
     mutationFn: (v: { id: number; role: Role }) => api<User>(`/users/${v.id}/role`, { method: 'PUT', json: { role: v.role } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.users }),
+  });
+}
+
+// ---------------------------------------------------------------- experiments
+
+export const useExperiments = (projectKey: string) =>
+  useQuery({ queryKey: keys.experiments(projectKey), queryFn: () => api<Experiment[]>(`/projects/${enc(projectKey)}/experiments`) });
+
+/** Results are computed on read, so poll while the page is open to watch a running experiment. */
+export const useExperiment = (projectKey: string, key: string) =>
+  useQuery({
+    queryKey: [...keys.experiments(projectKey), key],
+    queryFn: () => api<Experiment>(`/projects/${enc(projectKey)}/experiments/${enc(key)}`),
+    refetchInterval: (q) => (q.state.data?.status === 'RUNNING' ? 30_000 : false),
+  });
+
+export interface CreateExperimentBody {
+  key: string;
+  name: string;
+  hypothesis?: string;
+  environment: string;
+  flagKey: string;
+  metricEventKey: string;
+  metricType: MetricType;
+  higherIsBetter: boolean;
+  controlVariation: number;
+}
+
+export function useCreateExperiment(projectKey: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateExperimentBody) => api<Experiment>(`/projects/${enc(projectKey)}/experiments`, { method: 'POST', json: body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.experiments(projectKey) }),
+  });
+}
+
+export function useStopExperiment(projectKey: string, key: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<Experiment>(`/projects/${enc(projectKey)}/experiments/${enc(key)}/stop`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.experiments(projectKey) }),
   });
 }
 
