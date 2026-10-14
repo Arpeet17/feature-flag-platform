@@ -38,8 +38,9 @@ The server times every evaluation batch (`ffp_evaluation_batch_seconds`, exporte
 | mean | 56 µs (561,090 batches) |
 
 So evaluation is a few percent of a ~1 ms request; the rest is HTTP, JSON serialisation and the security
-filter chain. This is the case for SDK-side evaluation: ship the rules to the SDK and evaluate in-process,
-taking the network out of the hot path entirely.
+filter chain. That is the case for SDK-side evaluation, now implemented: `LocalFlagClient` evaluates in-process
+at **~2.4 µs per flag** in Node.js (`sdk/js/examples/differential-check.mjs`), roughly 400× faster than a
+round trip to even a local server, with no dependency on the platform being up.
 
 ### Changes under load
 

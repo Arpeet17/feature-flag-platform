@@ -14,6 +14,7 @@ Full stack: **Spring Boot 4 / Java 21** API, **React 19 + TypeScript** dashboard
 |---|---|
 | **Evaluation engine** | Pure, side-effect-free Java engine: individual targets → rules (AND of clauses, first match wins) → default rule; 15 operators incl. regex, SemVer and date comparisons, negation, reusable **segments**, flag **prerequisites** with cycle detection, and an explained **reason** for every result. |
 | **Percentage rollouts** | Deterministic MurmurHash3 bucketing with per-flag salt, 0.001% granularity, custom bucketing attribute (e.g. roll out per `orgId`). Sticky, monotonic on ramp-up, uncorrelated across flags — all three properties are unit-tested statistically. |
+| **Local evaluation** | Server-side SDK downloads the ruleset (ETag/304) and evaluates in-process in **~2 µs per flag**, with no network call per check. A port of the Java engine, held to **176 shared cross-language conformance vectors** that both builds run, and verified live: **70,000 evaluations, 0 mismatches** against the server. |
 | **Real-time delivery** | Immutable per-environment snapshots cached in memory (no DB on the hot path), invalidated after commit; SSE stream tells SDKs to refresh within milliseconds. |
 | **Horizontal scaling** | Run any number of API instances: invalidations (and SDK key revocations) fan out over **Redis pub/sub**, with a max snapshot age bounding staleness if a message is ever lost. Degrades gracefully — instances boot and serve with Redis down, and resubscribe when it returns. Covered by a test that runs two full instances side by side. |
 | **Safety** | Optimistic locking on targeting (409 instead of lost updates), server-side validation with path-addressed errors, archive-before-delete, dependency checks, production toggle confirmation, every change audited **in the same transaction** with before/after state. |
@@ -101,19 +102,30 @@ a version-gated mobile feature (`mobile-dark-mode`), remote JSON config (`pricin
 
 ## Using the SDK
 
+Two clients, one package:
+
 ```ts
-import { FlagClient } from '@flagship/sdk';
+import { FlagClient, LocalFlagClient } from '@flagship/sdk';
 
-const flags = new FlagClient({ baseUrl: 'https://flags.example.com', sdkKey: process.env.FLAG_SDK_KEY! });
-await flags.identify({ key: user.id, attributes: { email: user.email, plan: user.plan, appVersion: '2.4.0' } });
+// Backend services: download the rules once, evaluate any user in-process (~2 µs, no network).
+const flags = new LocalFlagClient({ baseUrl: 'https://flags.example.com', sdkKey: process.env.FLAG_SDK_KEY! });
+await flags.start();
+app.get('/checkout', (req, res) => {
+  const user = { key: req.user.id, attributes: { email: req.user.email, plan: req.user.plan } };
+  flags.boolVariation('new-checkout', user, false) ? renderNew(res) : renderOld(res);   // never throws
+});
 
-if (flags.boolVariation('new-checkout', false)) renderNewCheckout();          // never throws; falls back to default
-const { value, reason } = flags.variationDetail('search-algorithm', 'bm25'); // log `reason` with experiment events
-flags.on('change', ({ changed }) => console.log('updated:', changed));       // pushed over SSE
+// User-facing apps: the server evaluates for the one current user; results are cached.
+const client = new FlagClient({ baseUrl, sdkKey });
+await client.identify({ key: user.id, attributes: { appVersion: '2.4.0' } });
+client.boolVariation('mobile-dark-mode', false);
+client.on('change', ({ changed }) => rerender(changed));       // pushed over SSE in milliseconds
 ```
 
-The SDK keeps serving last-known values if the platform is unreachable, coalesces bursts of change
-notifications into at most one follow-up request, and reconnects with exponential backoff + full jitter.
+Both keep serving last-known values if the platform is unreachable, coalesce bursts of change
+notifications, reconnect with exponential backoff + full jitter, and explain every result
+(`variationDetail(...).reason`). `node sdk/js/examples/differential-check.mjs` compares local and server
+evaluation for 10,000 random users against a running instance.
 
 Or call the API directly:
 
@@ -147,9 +159,13 @@ All errors are `application/problem+json`; validation failures (422) include an 
 ```bash
 cd backend && mvn verify          # 112 unit + integration tests (H2 by default; set FFP_DB_URL to run on PostgreSQL)
 cd frontend && npm test           # component + logic tests (Vitest, Testing Library)
-cd sdk/js && npm test             # SSE parsing, fallbacks, change detection, reconnect backoff
+cd sdk/js && npm test             # 192 tests: conformance vectors, both clients, SSE parsing, backoff
 cd loadtest && mvn gatling:test -Dsimulation=ffp.loadtest.SdkEvaluationSimulation -Drps=1000   # against a running API
 ```
+
+**Cross-language conformance.** `conformance/evaluation-vectors.json` holds 176 cases (MurmurHash3 reference
+values, bucket assignments, all 15 operators with their edge cases, full evaluations with exact reasons). The Java
+engine and the TypeScript SDK both run every case, so the two implementations cannot drift apart silently.
 
 Backend tests cover the engine exhaustively (MurmurHash3 reference vectors, rollout distribution/stickiness/
 independence, every operator, evaluation precedence, prerequisite cycles, a deterministic race test for the
@@ -170,7 +186,8 @@ backend/   Spring Boot API
   flag/ segment/ environment/ project/ auth/ audit/ sdk/   feature slices (entity, repo, service, controller)
   resources/db/migration   Flyway migrations
 frontend/  React dashboard (TanStack Query, React Router)
-sdk/js/    TypeScript SDK
+sdk/js/    TypeScript SDK (remote + local evaluation clients, engine port)
+conformance/  evaluation vectors shared by the Java engine and the TypeScript SDK
 loadtest/  Gatling load tests (steady-state SDK traffic; SDK traffic while flags change)
 docs/      design notes and screenshots
 ```

@@ -11,7 +11,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import com.ffp.feature_flag_platform.evaluation.runtime.EnvironmentSnapshot;
+import com.ffp.feature_flag_platform.sdk.SdkDtos.RulesetResponse;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,6 +54,18 @@ public class SdkController {
     public FlagValue evaluateOne(@AuthenticationPrincipal SdkEnvironment environment, @PathVariable String flagKey,
                                  @Valid @RequestBody ContextDto context) {
         return FlagValue.from(evaluation.evaluateOne(environment.environmentId(), flagKey, context.toDomain()));
+    }
+
+    @Operation(summary = "The environment's full ruleset for SDKs that evaluate locally",
+            description = "Supports conditional requests: send the last ETag in If-None-Match and receive 304 if nothing changed.")
+    @GetMapping("/rules")
+    public ResponseEntity<RulesetResponse> rules(@AuthenticationPrincipal SdkEnvironment environment, WebRequest request) {
+        EnvironmentSnapshot snapshot = evaluation.snapshot(environment.environmentId());
+        String etag = "\"" + snapshot.version() + "\"";
+        if (request.checkNotModified(etag)) {
+            return null; // 304 Not Modified, headers already set
+        }
+        return ResponseEntity.ok().eTag(etag).cacheControl(CacheControl.noCache()).body(RulesetResponse.from(snapshot));
     }
 
     @Operation(summary = "Server-Sent Events stream: 'ready' on connect, 'flags-changed' whenever the environment changes")

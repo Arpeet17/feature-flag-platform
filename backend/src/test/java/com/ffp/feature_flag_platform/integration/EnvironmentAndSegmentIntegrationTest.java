@@ -79,6 +79,30 @@ class EnvironmentAndSegmentIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void rulesetSupportsConditionalRequests() throws Exception {
+        String project = uniqueKey("rules");
+        String sdk = createProject(project).get("production");
+        as(Role.EDITOR, postJson("/api/v1/projects/" + project + "/flags", Map.of("key", "f", "name", "F", "type", "BOOLEAN")));
+
+        var first = mvc.perform(get("/api/v1/sdk/rules").header("X-SDK-Key", sdk))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.flags.f.salt").isNotEmpty())
+                .andExpect(jsonPath("$.flags.f.targeting.offVariation").value(1))
+                .andReturn().getResponse();
+        String etag = first.getHeader("ETag");
+
+        mvc.perform(get("/api/v1/sdk/rules").header("X-SDK-Key", sdk).header("If-None-Match", etag))
+                .andExpect(status().isNotModified());
+
+        as(Role.EDITOR, postJson("/api/v1/projects/" + project + "/flags/f/environments/production/toggle", Map.of("enabled", true)));
+        mvc.perform(get("/api/v1/sdk/rules").header("X-SDK-Key", sdk).header("If-None-Match", etag))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.flags.f.enabled").value(true));
+
+        mvc.perform(get("/api/v1/sdk/rules")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void cannotDeleteLastEnvironment() throws Exception {
         String project = uniqueKey("last");
         createProject(project);

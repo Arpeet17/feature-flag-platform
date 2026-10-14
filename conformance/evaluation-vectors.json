@@ -1,0 +1,3194 @@
+{
+  "description" : "Shared evaluation conformance vectors. Every SDK that evaluates flags locally must produce exactly these results. Generated expectations come from the Java reference implementation (backend), hand-written ones encode the spec.",
+  "flags" : {
+    "off-flag" : {
+      "key" : "off-flag",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : false,
+      "salt" : "salt-off-flag",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "fallthrough-true" : {
+      "key" : "fallthrough-true",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-fallthrough-true",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "fallthrough-false" : {
+      "key" : "fallthrough-false",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-fallthrough-false",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 1
+        }
+      }
+    },
+    "parent-off" : {
+      "key" : "parent-off",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : false,
+      "salt" : "salt-parent-off",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "targets-and-rules" : {
+      "key" : "targets-and-rules",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-targets-and-rules",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ {
+          "variation" : 1,
+          "values" : [ "blocked" ]
+        }, {
+          "variation" : 0,
+          "values" : [ "vip" ]
+        } ],
+        "rules" : [ {
+          "id" : "acme-staff",
+          "description" : "acme-staff",
+          "clauses" : [ {
+            "attribute" : "email",
+            "operator" : "ENDS_WITH",
+            "values" : [ "@acme.com" ],
+            "negate" : false
+          } ],
+          "serve" : {
+            "variation" : 0
+          }
+        }, {
+          "id" : "paying-adults",
+          "description" : "paying-adults",
+          "clauses" : [ {
+            "attribute" : "plan",
+            "operator" : "IN",
+            "values" : [ "pro", "enterprise" ],
+            "negate" : false
+          }, {
+            "attribute" : "age",
+            "operator" : "GREATER_THAN_OR_EQUAL",
+            "values" : [ "18" ],
+            "negate" : false
+          } ],
+          "serve" : {
+            "variation" : 0
+          }
+        } ],
+        "fallthrough" : {
+          "variation" : 1
+        }
+      }
+    },
+    "segment-flag" : {
+      "key" : "segment-flag",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-segment-flag",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ {
+          "id" : "in-beta",
+          "description" : "in-beta",
+          "clauses" : [ {
+            "attribute" : null,
+            "operator" : "SEGMENT_MATCH",
+            "values" : [ "beta" ],
+            "negate" : false
+          } ],
+          "serve" : {
+            "variation" : 0
+          }
+        } ],
+        "fallthrough" : {
+          "variation" : 1
+        }
+      }
+    },
+    "not-in-segment" : {
+      "key" : "not-in-segment",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-not-in-segment",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ {
+          "id" : "outside-beta",
+          "description" : "outside-beta",
+          "clauses" : [ {
+            "attribute" : null,
+            "operator" : "SEGMENT_MATCH",
+            "values" : [ "beta" ],
+            "negate" : true
+          } ],
+          "serve" : {
+            "variation" : 0
+          }
+        } ],
+        "fallthrough" : {
+          "variation" : 1
+        }
+      }
+    },
+    "mobile-version-gate" : {
+      "key" : "mobile-version-gate",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-mobile-version-gate",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ {
+          "id" : "v2.3+",
+          "description" : "v2.3+",
+          "clauses" : [ {
+            "attribute" : "appVersion",
+            "operator" : "SEMVER_LESS_THAN",
+            "values" : [ "2.3.0" ],
+            "negate" : true
+          } ],
+          "serve" : {
+            "variation" : 0
+          }
+        } ],
+        "fallthrough" : {
+          "variation" : 1
+        }
+      }
+    },
+    "prereq-satisfied" : {
+      "key" : "prereq-satisfied",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-prereq-satisfied",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ {
+          "flagKey" : "fallthrough-true",
+          "variation" : 0
+        } ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "prereq-disabled-parent" : {
+      "key" : "prereq-disabled-parent",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-prereq-disabled-parent",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ {
+          "flagKey" : "parent-off",
+          "variation" : 1
+        } ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "prereq-wrong-variation" : {
+      "key" : "prereq-wrong-variation",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-prereq-wrong-variation",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ {
+          "flagKey" : "fallthrough-false",
+          "variation" : 0
+        } ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "prereq-missing-parent" : {
+      "key" : "prereq-missing-parent",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-prereq-missing-parent",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ {
+          "flagKey" : "does-not-exist",
+          "variation" : 0
+        } ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "cycle-a" : {
+      "key" : "cycle-a",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-cycle-a",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ {
+          "flagKey" : "cycle-b",
+          "variation" : 0
+        } ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "cycle-b" : {
+      "key" : "cycle-b",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-cycle-b",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ {
+          "flagKey" : "cycle-a",
+          "variation" : 0
+        } ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "rollout-25" : {
+      "key" : "rollout-25",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-rollout-25",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "rollout" : {
+            "variations" : [ {
+              "variation" : 0,
+              "weight" : 25000
+            }, {
+              "variation" : 1,
+              "weight" : 75000
+            } ],
+            "bucketBy" : "key"
+          }
+        }
+      }
+    },
+    "rule-rollout" : {
+      "key" : "rule-rollout",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-rule-rollout",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ {
+          "id" : "pro-rollout",
+          "description" : "pro-rollout",
+          "clauses" : [ {
+            "attribute" : "plan",
+            "operator" : "IN",
+            "values" : [ "pro" ],
+            "negate" : false
+          } ],
+          "serve" : {
+            "rollout" : {
+              "variations" : [ {
+                "variation" : 0,
+                "weight" : 50000
+              }, {
+                "variation" : 1,
+                "weight" : 50000
+              } ],
+              "bucketBy" : "key"
+            }
+          }
+        } ],
+        "fallthrough" : {
+          "variation" : 1
+        }
+      }
+    },
+    "rollout-by-org" : {
+      "key" : "rollout-by-org",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-rollout-by-org",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "rollout" : {
+            "variations" : [ {
+              "variation" : 0,
+              "weight" : 50000
+            }, {
+              "variation" : 1,
+              "weight" : 50000
+            } ],
+            "bucketBy" : "orgId"
+          }
+        }
+      }
+    },
+    "experiment-abc" : {
+      "key" : "experiment-abc",
+      "type" : "STRING",
+      "variations" : [ {
+        "value" : "control"
+      }, {
+        "value" : "treatment-b"
+      }, {
+        "value" : "treatment-c"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-experiment-abc",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 0,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "rollout" : {
+            "variations" : [ {
+              "variation" : 0,
+              "weight" : 34000
+            }, {
+              "variation" : 1,
+              "weight" : 33000
+            }, {
+              "variation" : 2,
+              "weight" : 33000
+            } ],
+            "bucketBy" : "key"
+          }
+        }
+      }
+    },
+    "json-config" : {
+      "key" : "json-config",
+      "type" : "JSON",
+      "variations" : [ {
+        "value" : {
+          "limit" : 10,
+          "tiers" : [ "free" ]
+        }
+      }, {
+        "value" : {
+          "limit" : 100,
+          "tiers" : [ "pro", "team" ]
+        }
+      } ],
+      "enabled" : true,
+      "salt" : "salt-json-config",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 0,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ {
+          "id" : "pro",
+          "description" : "pro",
+          "clauses" : [ {
+            "attribute" : "plan",
+            "operator" : "IN",
+            "values" : [ "pro" ],
+            "negate" : false
+          } ],
+          "serve" : {
+            "variation" : 1
+          }
+        } ],
+        "fallthrough" : {
+          "variation" : 0
+        }
+      }
+    },
+    "number-flag" : {
+      "key" : "number-flag",
+      "type" : "NUMBER",
+      "variations" : [ {
+        "value" : 10
+      }, {
+        "value" : 2.5
+      } ],
+      "enabled" : true,
+      "salt" : "salt-number-flag",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 0,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 1
+        }
+      }
+    },
+    "malformed-variation" : {
+      "key" : "malformed-variation",
+      "type" : "BOOLEAN",
+      "variations" : [ {
+        "value" : true,
+        "name" : "On"
+      }, {
+        "value" : false,
+        "name" : "Off"
+      } ],
+      "enabled" : true,
+      "salt" : "salt-malformed-variation",
+      "version" : 1,
+      "targeting" : {
+        "offVariation" : 1,
+        "prerequisites" : [ ],
+        "targets" : [ ],
+        "rules" : [ ],
+        "fallthrough" : {
+          "variation" : 7
+        }
+      }
+    }
+  },
+  "segments" : {
+    "beta" : {
+      "key" : "beta",
+      "included" : [ "alice" ],
+      "excluded" : [ "mallory" ],
+      "rules" : [ {
+        "clauses" : [ {
+          "attribute" : "email",
+          "operator" : "ENDS_WITH",
+          "values" : [ "@acme.com" ],
+          "negate" : false
+        } ]
+      } ]
+    }
+  },
+  "evaluations" : [ {
+    "description" : "flag off serves off variation",
+    "flag" : "off-flag",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "OFF"
+      }
+    }
+  }, {
+    "description" : "fallthrough",
+    "flag" : "fallthrough-true",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "unknown flag",
+    "flag" : "nope",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : null,
+      "variation" : null,
+      "reason" : {
+        "kind" : "ERROR",
+        "errorKind" : "FLAG_NOT_FOUND"
+      }
+    }
+  }, {
+    "description" : "individual target beats rules",
+    "flag" : "targets-and-rules",
+    "context" : {
+      "key" : "blocked",
+      "attributes" : {
+        "email" : "x@acme.com"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "TARGET_MATCH"
+      }
+    }
+  }, {
+    "description" : "second target list",
+    "flag" : "targets-and-rules",
+    "context" : {
+      "key" : "vip"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "TARGET_MATCH"
+      }
+    }
+  }, {
+    "description" : "first matching rule wins",
+    "flag" : "targets-and-rules",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "email" : "a@acme.com",
+        "plan" : "pro",
+        "age" : 30
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "acme-staff"
+      }
+    }
+  }, {
+    "description" : "all clauses must match (fails on age)",
+    "flag" : "targets-and-rules",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "plan" : "pro",
+        "age" : 17
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "second rule matches",
+    "flag" : "targets-and-rules",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "plan" : "enterprise",
+        "age" : 18
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 1,
+        "ruleId" : "paying-adults"
+      }
+    }
+  }, {
+    "description" : "numeric attribute given as string",
+    "flag" : "targets-and-rules",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "plan" : "pro",
+        "age" : "21"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 1,
+        "ruleId" : "paying-adults"
+      }
+    }
+  }, {
+    "description" : "missing attribute does not match",
+    "flag" : "targets-and-rules",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "null attribute is treated as missing",
+    "flag" : "targets-and-rules",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "plan" : "pro",
+        "age" : null
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "segment: explicitly included",
+    "flag" : "segment-flag",
+    "context" : {
+      "key" : "alice"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "in-beta"
+      }
+    }
+  }, {
+    "description" : "segment: matched by rule",
+    "flag" : "segment-flag",
+    "context" : {
+      "key" : "bob",
+      "attributes" : {
+        "email" : "bob@acme.com"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "in-beta"
+      }
+    }
+  }, {
+    "description" : "segment: exclusion beats rule",
+    "flag" : "segment-flag",
+    "context" : {
+      "key" : "mallory",
+      "attributes" : {
+        "email" : "mallory@acme.com"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "segment: not a member",
+    "flag" : "segment-flag",
+    "context" : {
+      "key" : "eve",
+      "attributes" : {
+        "email" : "eve@evil.com"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "negated segment: non-member matches",
+    "flag" : "not-in-segment",
+    "context" : {
+      "key" : "eve"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "outside-beta"
+      }
+    }
+  }, {
+    "description" : "negated segment: member does not",
+    "flag" : "not-in-segment",
+    "context" : {
+      "key" : "alice"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "semver >= via negation: newer",
+    "flag" : "mobile-version-gate",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "appVersion" : "2.10.0"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "v2.3+"
+      }
+    }
+  }, {
+    "description" : "semver >= via negation: equal",
+    "flag" : "mobile-version-gate",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "appVersion" : "2.3"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "v2.3+"
+      }
+    }
+  }, {
+    "description" : "semver: pre-release is lower",
+    "flag" : "mobile-version-gate",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "appVersion" : "2.3.0-beta.1"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "semver: an unparseable version is a non-match, so a negated clause matches (only missing attributes are exempt from negation)",
+    "flag" : "mobile-version-gate",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "appVersion" : "banana"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "v2.3+"
+      }
+    }
+  }, {
+    "description" : "prerequisite satisfied",
+    "flag" : "prereq-satisfied",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "prerequisite flag disabled",
+    "flag" : "prereq-disabled-parent",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "PREREQUISITE_FAILED",
+        "prerequisiteKey" : "parent-off"
+      }
+    }
+  }, {
+    "description" : "prerequisite serves another variation",
+    "flag" : "prereq-wrong-variation",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "PREREQUISITE_FAILED",
+        "prerequisiteKey" : "fallthrough-false"
+      }
+    }
+  }, {
+    "description" : "prerequisite missing",
+    "flag" : "prereq-missing-parent",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "PREREQUISITE_FAILED",
+        "prerequisiteKey" : "does-not-exist"
+      }
+    }
+  }, {
+    "description" : "prerequisite cycle terminates",
+    "flag" : "cycle-a",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "PREREQUISITE_FAILED",
+        "prerequisiteKey" : "cycle-b"
+      }
+    }
+  }, {
+    "description" : "json variation by rule",
+    "flag" : "json-config",
+    "context" : {
+      "key" : "u",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : {
+        "limit" : 100,
+        "tiers" : [ "pro", "team" ]
+      },
+      "variation" : 1,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro"
+      }
+    }
+  }, {
+    "description" : "number variation",
+    "flag" : "number-flag",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : 2.5,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH"
+      }
+    }
+  }, {
+    "description" : "out-of-range variation is malformed",
+    "flag" : "malformed-variation",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : null,
+      "variation" : null,
+      "reason" : {
+        "kind" : "ERROR",
+        "errorKind" : "MALFORMED_FLAG"
+      }
+    }
+  }, {
+    "description" : "bucket-by attribute missing uses bucket 0",
+    "flag" : "rollout-by-org",
+    "context" : {
+      "key" : "u"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    }
+  }, {
+    "description" : "rollout-25 user-0",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-0"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-1",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-1"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-2",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-2"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-3",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-3"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-4",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-4"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-5",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-5"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-6",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-6"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-7",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-7"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-8",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-8"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-9",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-9"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-10",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-10"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-11",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-11"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-12",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-12"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-13",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-13"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-14",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-14"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-15",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-15"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-16",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-16"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-17",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-17"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-18",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-18"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-19",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-19"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-20",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-20"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-21",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-21"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-22",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-22"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-23",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-23"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-24",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-24"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-25",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-25"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-26",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-26"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-27",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-27"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-28",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-28"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-29",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-29"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-30",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-30"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-31",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-31"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-32",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-32"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-33",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-33"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-34",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-34"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-35",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-35"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-36",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-36"
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-37",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-37"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-38",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-38"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout-25 user-39",
+    "flag" : "rollout-25",
+    "context" : {
+      "key" : "user-39"
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-0",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-0"
+    },
+    "expected" : {
+      "value" : "treatment-b",
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-7919",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-7919"
+    },
+    "expected" : {
+      "value" : "treatment-b",
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-15838",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-15838"
+    },
+    "expected" : {
+      "value" : "treatment-c",
+      "variation" : 2,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-23757",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-23757"
+    },
+    "expected" : {
+      "value" : "control",
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-31676",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-31676"
+    },
+    "expected" : {
+      "value" : "control",
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-39595",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-39595"
+    },
+    "expected" : {
+      "value" : "treatment-b",
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-47514",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-47514"
+    },
+    "expected" : {
+      "value" : "treatment-b",
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-55433",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-55433"
+    },
+    "expected" : {
+      "value" : "treatment-b",
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-63352",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-63352"
+    },
+    "expected" : {
+      "value" : "control",
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-71271",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-71271"
+    },
+    "expected" : {
+      "value" : "treatment-c",
+      "variation" : 2,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-79190",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-79190"
+    },
+    "expected" : {
+      "value" : "treatment-c",
+      "variation" : 2,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-87109",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-87109"
+    },
+    "expected" : {
+      "value" : "control",
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-95028",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-95028"
+    },
+    "expected" : {
+      "value" : "treatment-b",
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-102947",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-102947"
+    },
+    "expected" : {
+      "value" : "control",
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "experiment user-110866",
+    "flag" : "experiment-abc",
+    "context" : {
+      "key" : "user-110866"
+    },
+    "expected" : {
+      "value" : "treatment-b",
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout by org org-1",
+    "flag" : "rollout-by-org",
+    "context" : {
+      "key" : "someone",
+      "attributes" : {
+        "orgId" : "org-1"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout by org org-2",
+    "flag" : "rollout-by-org",
+    "context" : {
+      "key" : "someone",
+      "attributes" : {
+        "orgId" : "org-2"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout by org org-42",
+    "flag" : "rollout-by-org",
+    "context" : {
+      "key" : "someone",
+      "attributes" : {
+        "orgId" : "org-42"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout by org acme",
+    "flag" : "rollout-by-org",
+    "context" : {
+      "key" : "someone",
+      "attributes" : {
+        "orgId" : "acme"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout by org 日本",
+    "flag" : "rollout-by-org",
+    "context" : {
+      "key" : "someone",
+      "attributes" : {
+        "orgId" : "日本"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-0",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-0",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-1",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-1",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-2",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-2",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-3",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-3",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-4",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-4",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-5",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-5",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-6",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-6",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-7",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-7",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-8",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-8",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rule rollout pro user-9",
+    "flag" : "rule-rollout",
+    "context" : {
+      "key" : "pro-9",
+      "attributes" : {
+        "plan" : "pro"
+      }
+    },
+    "expected" : {
+      "value" : false,
+      "variation" : 1,
+      "reason" : {
+        "kind" : "RULE_MATCH",
+        "ruleIndex" : 0,
+        "ruleId" : "pro-rollout",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  }, {
+    "description" : "rollout bucket by numeric attribute",
+    "flag" : "rollout-by-org",
+    "context" : {
+      "key" : "x",
+      "attributes" : {
+        "orgId" : 12345
+      }
+    },
+    "expected" : {
+      "value" : true,
+      "variation" : 0,
+      "reason" : {
+        "kind" : "FALLTHROUGH",
+        "inRollout" : true
+      }
+    },
+    "generated" : true
+  } ],
+  "clauses" : [ {
+    "description" : "IN string",
+    "clause" : {
+      "attribute" : "country",
+      "operator" : "IN",
+      "values" : [ "CA", "US" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "country" : "US"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "IN no match",
+    "clause" : {
+      "attribute" : "country",
+      "operator" : "IN",
+      "values" : [ "CA", "US" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "country" : "DE"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "IN is case sensitive",
+    "clause" : {
+      "attribute" : "country",
+      "operator" : "IN",
+      "values" : [ "us" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "country" : "US"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "IN integer vs string",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "IN",
+      "values" : [ "42" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : 42
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "IN float equals integer string",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "IN",
+      "values" : [ "42" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : 42.0
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "IN decimal string",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "IN",
+      "values" : [ "1.50" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : 1.5
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "IN boolean",
+    "clause" : {
+      "attribute" : "b",
+      "operator" : "IN",
+      "values" : [ "true" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "b" : true
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "IN string number is not numeric",
+    "clause" : {
+      "attribute" : "s",
+      "operator" : "IN",
+      "values" : [ "42.0" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "s" : "42"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "IN on key attribute",
+    "clause" : {
+      "attribute" : "key",
+      "operator" : "IN",
+      "values" : [ "user-1" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : { }
+    },
+    "expected" : true
+  }, {
+    "description" : "IN any array element",
+    "clause" : {
+      "attribute" : "groups",
+      "operator" : "IN",
+      "values" : [ "beta" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "groups" : [ "eng", "beta" ]
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "IN array none",
+    "clause" : {
+      "attribute" : "groups",
+      "operator" : "IN",
+      "values" : [ "sales" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "groups" : [ "eng", "beta" ]
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "negated IN",
+    "clause" : {
+      "attribute" : "country",
+      "operator" : "IN",
+      "values" : [ "US" ],
+      "negate" : true
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "country" : "DE"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "negated IN missing attribute",
+    "clause" : {
+      "attribute" : "country",
+      "operator" : "IN",
+      "values" : [ "US" ],
+      "negate" : true
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : { }
+    },
+    "expected" : false
+  }, {
+    "description" : "STARTS_WITH",
+    "clause" : {
+      "attribute" : "email",
+      "operator" : "STARTS_WITH",
+      "values" : [ "admin" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "email" : "admin@x.io"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "ENDS_WITH",
+    "clause" : {
+      "attribute" : "email",
+      "operator" : "ENDS_WITH",
+      "values" : [ "@acme.com" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "email" : "a@acme.com"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "ENDS_WITH on number is false",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "ENDS_WITH",
+      "values" : [ "2" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : 42
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "CONTAINS",
+    "clause" : {
+      "attribute" : "plan",
+      "operator" : "CONTAINS",
+      "values" : [ "mium" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "plan" : "premium"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "CONTAINS unicode",
+    "clause" : {
+      "attribute" : "city",
+      "operator" : "CONTAINS",
+      "values" : [ "ünch" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "city" : "München"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "MATCHES",
+    "clause" : {
+      "attribute" : "id",
+      "operator" : "MATCHES",
+      "values" : [ "^user-\\d+$" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "id" : "user-123"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "MATCHES is a search, not a full match",
+    "clause" : {
+      "attribute" : "id",
+      "operator" : "MATCHES",
+      "values" : [ "\\d{3}" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "id" : "abc123def"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "MATCHES no",
+    "clause" : {
+      "attribute" : "id",
+      "operator" : "MATCHES",
+      "values" : [ "^user-\\d+$" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "id" : "admin"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "LESS_THAN",
+    "clause" : {
+      "attribute" : "age",
+      "operator" : "LESS_THAN",
+      "values" : [ "18" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "age" : 17
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "LESS_THAN equal",
+    "clause" : {
+      "attribute" : "age",
+      "operator" : "LESS_THAN",
+      "values" : [ "18" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "age" : 18
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "LESS_THAN_OR_EQUAL",
+    "clause" : {
+      "attribute" : "age",
+      "operator" : "LESS_THAN_OR_EQUAL",
+      "values" : [ "18" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "age" : 18
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "GREATER_THAN numeric string",
+    "clause" : {
+      "attribute" : "age",
+      "operator" : "GREATER_THAN",
+      "values" : [ "18" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "age" : "21"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "GREATER_THAN non-number",
+    "clause" : {
+      "attribute" : "age",
+      "operator" : "GREATER_THAN",
+      "values" : [ "18" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "age" : "abc"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "GREATER_THAN_OR_EQUAL decimal",
+    "clause" : {
+      "attribute" : "score",
+      "operator" : "GREATER_THAN_OR_EQUAL",
+      "values" : [ "18.5" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "score" : 18.5
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "numeric: leading plus",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "GREATER_THAN",
+      "values" : [ "0" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : "+1"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "numeric: leading dot",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "LESS_THAN",
+      "values" : [ "1" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : ".5"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "numeric: exponent",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "GREATER_THAN",
+      "values" : [ "999" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : "1e3"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "numeric: hex is not a number",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "GREATER_THAN",
+      "values" : [ "1" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : "0x10"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "numeric: Infinity is not a number",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "GREATER_THAN",
+      "values" : [ "1" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : "Infinity"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "numeric: whitespace trimmed",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "GREATER_THAN",
+      "values" : [ "1" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : " 5 "
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "numeric: empty string",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "LESS_THAN",
+      "values" : [ "1" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : ""
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "numeric: boolean is not a number",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "GREATER_THAN",
+      "values" : [ "0" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : true
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "SEMVER_EQUAL short form",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_EQUAL",
+      "values" : [ "2.3" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "2.3.0"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "SEMVER_EQUAL ignores build metadata",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_EQUAL",
+      "values" : [ "1.2.3" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "1.2.3+build.9"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "SEMVER_EQUAL with v prefix",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_EQUAL",
+      "values" : [ "1.2.3" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "v1.2.3"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "SEMVER_LESS_THAN",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_LESS_THAN",
+      "values" : [ "2.3.0" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "2.2.9"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "SEMVER_GREATER_THAN numeric not lexical",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_GREATER_THAN",
+      "values" : [ "2.9.0" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "2.10.0"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "SEMVER pre-release ordering",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_LESS_THAN",
+      "values" : [ "1.0.0-beta.11" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "1.0.0-beta.2"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "SEMVER pre-release alpha < beta",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_LESS_THAN",
+      "values" : [ "1.0.0-beta" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "1.0.0-alpha.1"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "SEMVER release > pre-release",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_GREATER_THAN",
+      "values" : [ "1.0.0-rc.1" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "1.0.0"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "SEMVER leading zero invalid",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_EQUAL",
+      "values" : [ "1.2.3" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "01.2.3"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "SEMVER four parts invalid",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_GREATER_THAN",
+      "values" : [ "1.0.0" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : "1.2.3.4"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "SEMVER number attribute",
+    "clause" : {
+      "attribute" : "v",
+      "operator" : "SEMVER_EQUAL",
+      "values" : [ "2" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "v" : 2
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "BEFORE iso",
+    "clause" : {
+      "attribute" : "d",
+      "operator" : "BEFORE",
+      "values" : [ "2025-01-01T00:00:00Z" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "d" : "2024-06-01T12:00:00Z"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "AFTER with offset",
+    "clause" : {
+      "attribute" : "d",
+      "operator" : "AFTER",
+      "values" : [ "2024-06-01T00:00:00+05:30" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "d" : "2024-05-31T19:00:00Z"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "AFTER exactly equal is false",
+    "clause" : {
+      "attribute" : "d",
+      "operator" : "AFTER",
+      "values" : [ "2024-05-31T18:30:00Z" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "d" : "2024-06-01T00:00:00+05:30"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "BEFORE epoch millis number",
+    "clause" : {
+      "attribute" : "d",
+      "operator" : "BEFORE",
+      "values" : [ "2025-01-01T00:00:00Z" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "d" : 1700000000000
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "AFTER epoch millis string",
+    "clause" : {
+      "attribute" : "d",
+      "operator" : "AFTER",
+      "values" : [ "1700000000000" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "d" : "2024-01-01T00:00:00Z"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "BEFORE fractional seconds",
+    "clause" : {
+      "attribute" : "d",
+      "operator" : "BEFORE",
+      "values" : [ "2024-01-01T00:00:00.500Z" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "d" : "2024-01-01T00:00:00.250Z"
+      }
+    },
+    "expected" : true
+  }, {
+    "description" : "dates without offset are rejected",
+    "clause" : {
+      "attribute" : "d",
+      "operator" : "BEFORE",
+      "values" : [ "2025-01-01T00:00:00Z" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "d" : "2024-01-01T00:00:00"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "dates: plain date rejected",
+    "clause" : {
+      "attribute" : "d",
+      "operator" : "BEFORE",
+      "values" : [ "2025-01-01T00:00:00Z" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "d" : "2024-01-01"
+      }
+    },
+    "expected" : false
+  }, {
+    "description" : "any of several values",
+    "clause" : {
+      "attribute" : "n",
+      "operator" : "GREATER_THAN",
+      "values" : [ "100", "5" ],
+      "negate" : false
+    },
+    "context" : {
+      "key" : "user-1",
+      "attributes" : {
+        "n" : 10
+      }
+    },
+    "expected" : true
+  } ],
+  "murmur3" : [ {
+    "input" : "",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 0
+  }, {
+    "input" : "",
+    "seed" : 1,
+    "generated" : true,
+    "expected" : 1364076727
+  }, {
+    "input" : "a",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 1009084850
+  }, {
+    "input" : "ab",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 2613040991
+  }, {
+    "input" : "abc",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 3017643002
+  }, {
+    "input" : "abcd",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 1139631978
+  }, {
+    "input" : "hello",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 613153351
+  }, {
+    "input" : "The quick brown fox jumps over the lazy dog",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 776992547
+  }, {
+    "input" : "héllo",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 3164577896
+  }, {
+    "input" : "日本語",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 2779017879
+  }, {
+    "input" : "emoji 🚀",
+    "seed" : 0,
+    "generated" : true,
+    "expected" : 1879318709
+  }, {
+    "input" : "hello",
+    "seed" : 42,
+    "generated" : true,
+    "expected" : 3806057185
+  } ],
+  "buckets" : [ {
+    "flagKey" : "new-checkout",
+    "salt" : "a1b2c3d4",
+    "value" : "user-1",
+    "generated" : true,
+    "expected" : 94887
+  }, {
+    "flagKey" : "new-checkout",
+    "salt" : "a1b2c3d4",
+    "value" : "user-2",
+    "generated" : true,
+    "expected" : 96909
+  }, {
+    "flagKey" : "new-checkout",
+    "salt" : "a1b2c3d4",
+    "value" : "user-1000000",
+    "generated" : true,
+    "expected" : 18000
+  }, {
+    "flagKey" : "search",
+    "salt" : "00ff00ff",
+    "value" : "user-1",
+    "generated" : true,
+    "expected" : 70420
+  }, {
+    "flagKey" : "x",
+    "salt" : "",
+    "value" : "",
+    "generated" : true,
+    "expected" : 87153
+  }, {
+    "flagKey" : "flag.with.dots",
+    "salt" : "salt",
+    "value" : "ünïcødé",
+    "generated" : true,
+    "expected" : 93747
+  }, {
+    "flagKey" : "k",
+    "salt" : "s",
+    "value" : "12345",
+    "generated" : true,
+    "expected" : 54050
+  }, {
+    "flagKey" : "k",
+    "salt" : "s",
+    "value" : "true",
+    "generated" : true,
+    "expected" : 71962
+  } ]
+}

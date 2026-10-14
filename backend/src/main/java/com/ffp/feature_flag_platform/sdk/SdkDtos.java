@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.ffp.feature_flag_platform.evaluation.model.EvaluationContext;
 import com.ffp.feature_flag_platform.evaluation.model.EvaluationReason;
 import com.ffp.feature_flag_platform.evaluation.model.EvaluationResult;
+import com.ffp.feature_flag_platform.evaluation.model.FlagDefinition;
+import com.ffp.feature_flag_platform.evaluation.model.SegmentDefinition;
+import com.ffp.feature_flag_platform.evaluation.runtime.EnvironmentSnapshot;
 import com.ffp.feature_flag_platform.evaluation.runtime.EvaluationService.BatchResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -34,6 +37,18 @@ public final class SdkDtos {
     public record FlagValue(JsonNode value, Integer variation, EvaluationReason reason, long version) {
         public static FlagValue from(EvaluationResult r) {
             return new FlagValue(r.value(), r.variationIndex(), r.reason(), r.flagVersion());
+        }
+    }
+
+    /**
+     * Everything a local-evaluation SDK needs: the same immutable definitions the server
+     * evaluates against. Contains segment membership lists and per-flag salts, so it is only
+     * served to server-side SDK keys.
+     */
+    public record RulesetResponse(long version, Map<String, FlagDefinition> flags, Map<String, SegmentDefinition> segments) {
+        public static RulesetResponse from(EnvironmentSnapshot snapshot) {
+            return new RulesetResponse(snapshot.version(), new java.util.TreeMap<>(snapshot.flags()),
+                    new java.util.TreeMap<>(snapshot.segments()));
         }
     }
 

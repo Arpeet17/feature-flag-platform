@@ -68,6 +68,11 @@ public class EvaluationService {
         return cache.get(environmentId).flags().get(flagKey);
     }
 
+    /** The full compiled ruleset, for SDKs that evaluate locally. */
+    public EnvironmentSnapshot snapshot(long environmentId) {
+        return cache.get(environmentId);
+    }
+
     public long currentVersion(long environmentId) {
         return cache.get(environmentId).version();
     }
