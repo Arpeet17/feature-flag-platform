@@ -3,3 +3,6 @@ ffp:
     demo-data: false
   stream:
     heartbeat: PT1H
+  rollouts:
+    # Tests drive RolloutEngine.process() with explicit timestamps instead.
+    scheduler-enabled: false

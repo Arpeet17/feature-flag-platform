@@ -97,6 +97,16 @@ public class EventStore {
                 eventKey, Timestamp.from(to), environmentId, flagKey, Timestamp.from(from), Timestamp.from(to));
     }
 
+    /** Randomized users first exposed to {@code variation} inside the window. */
+    public long countExposures(long environmentId, String flagKey, int variation, Instant from, Instant to) {
+        Long n = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM exposures
+                WHERE environment_id = ? AND flag_key = ? AND variation = ? AND randomized = TRUE
+                  AND exposed_at >= ? AND exposed_at <= ?""",
+                Long.class, environmentId, flagKey, variation, Timestamp.from(from), Timestamp.from(to));
+        return n == null ? 0 : n;
+    }
+
     /** Exposures in the window that were NOT randomized (served by targeting rules) and are excluded. */
     public long countNonRandomized(long environmentId, String flagKey, Instant from, Instant to) {
         Long n = jdbc.queryForObject("""

@@ -295,3 +295,38 @@ export interface Experiment {
   createdBy: string | null;
   results: { from: string; to: string; excludedNonRandomized: number; analysis: Analysis } | null;
 }
+
+export type RolloutStatus = 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'ROLLED_BACK' | 'CANCELLED';
+
+export interface RolloutHistoryEntry {
+  at: string;
+  step: number;
+  percentage: number;
+  action: 'STARTED' | 'ADVANCED' | 'COMPLETED' | 'ROLLED_BACK' | 'PAUSED' | 'RESUMED' | 'CANCELLED';
+  detail: string;
+}
+
+export interface GuardedRollout {
+  id: number;
+  flagKey: string;
+  environmentKey: string;
+  environmentName: string;
+  treatmentVariation: number;
+  treatmentLabel: string;
+  controlVariation: number;
+  controlLabel: string;
+  steps: number[];
+  currentStep: number;
+  currentPercentage: number;
+  status: RolloutStatus;
+  stepIntervalSeconds: number;
+  minUsersPerStep: number;
+  guardrailEventKey?: string;
+  stepStartedAt: string;
+  nextCheckAt: string;
+  lastDecision?: string;
+  createdBy?: string;
+  createdAt: string;
+  history?: RolloutHistoryEntry[];
+  guardrail?: Analysis;
+}

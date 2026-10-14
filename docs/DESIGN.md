@@ -177,6 +177,36 @@ A flag with a percentage rollout is already a randomized controlled trial; the p
   what makes that migration easy. Peeking (re-checking a fixed-horizon test daily) inflates false positives;
   sequential testing (e.g. mSPRT) is the principled fix and the natural next step.
 
+## 4c. Guarded progressive rollouts
+
+A rollout ramps one variation through percentage steps under a guardrail metric (e.g. `error`) and decides on
+its own: advance, hold, or roll back. It is the meeting point of everything above: bucketing, events,
+statistics, cache invalidation, audit.
+
+* **Monotonic ramp.** The rollout rewrites only the flag's default rule, with the treatment listed *first*, so
+  it owns the lowest buckets: going from 10% to 25% only adds users. Nobody flips between versions mid-session.
+* **Analysis per step.** The split changes at every step, so a cumulative comparison mixes populations
+  assigned under different splits (and the SRM check would fire spuriously). Each step analyses only users
+  *first exposed during that step*; within it, assignment follows one fixed split, so both the guardrail test
+  and the sample-ratio check are valid. The guardrail is checked several times per step (interval/5, 2–60 s),
+  so a regression is caught as soon as the evidence is significant, not at the end of the step.
+* **Decision rules.** SRM → roll back (the assignment can't be trusted, so neither can the guardrail).
+  Treatment significantly worse (two-proportion z-test, α = 0.05) → roll back. Otherwise advance once the
+  step's time has elapsed *and* it has seen `minUsersPerStep` treatment users. Low traffic means waiting, not
+  advancing blind. "Not significantly worse" is not proof of safety; the minimum-users gate and the
+  multi-step ramp are what bound the risk.
+* **Many instances, one decision.** Every instance runs the scheduler. Each due rollout is claimed with
+  `SELECT … FOR UPDATE SKIP LOCKED` inside the processing transaction, so exactly one instance processes it
+  and the others move on instead of queueing. `@Version` on the rollout and optimistic locking on the flag
+  config make a double-advance impossible even without the lock; a test fires four concurrent processors at
+  one due rollout and asserts exactly one advance.
+* **Humans win.** The rollout records the flag-config version it wrote. If someone edits the flag (or turns it
+  off) mid-rollout, the next check sees a different version and *pauses* rather than overwriting their change;
+  resuming re-applies the current step on top of their edit. Changes are made as `rollout-bot` through the
+  normal flag service, so they're validated, audited and pushed to SDKs like any human change.
+* **Time is a parameter.** `RolloutEngine.process(id, now)` takes the clock explicitly, so tests walk a
+  rollout through an hour-long step in milliseconds, and the scheduler is just `process(id, clock.instant())`.
+
 ## 5. Write path: correctness and safety
 
 * **Optimistic locking**: targeting writes must include the version the editor loaded. A mismatch returns

@@ -8,8 +8,10 @@ Full stack: **Spring Boot 4 / Java 21** API, **React 19 + TypeScript** dashboard
 
 ![Flags across environments](docs/screenshots/flags.png)
 
-| Experiment results | Sample ratio mismatch caught |
+| Guarded rollouts | Automatic rollback |
 |---|---|
+| ![Rollouts](docs/screenshots/rollouts.png) | ![Rolled back](docs/screenshots/rollout-rolled-back.png) |
+| **Experiment results** | **Sample ratio mismatch caught** |
 | ![Experiment results](docs/screenshots/experiment.png) | ![SRM detected](docs/screenshots/experiment-srm.png) |
 
 ## Highlights
@@ -19,6 +21,7 @@ Full stack: **Spring Boot 4 / Java 21** API, **React 19 + TypeScript** dashboard
 | **Evaluation engine** | Pure, side-effect-free Java engine: individual targets → rules (AND of clauses, first match wins) → default rule; 15 operators incl. regex, SemVer and date comparisons, negation, reusable **segments**, flag **prerequisites** with cycle detection, and an explained **reason** for every result. |
 | **Percentage rollouts** | Deterministic MurmurHash3 bucketing with per-flag salt, 0.001% granularity, custom bucketing attribute (e.g. roll out per `orgId`). Sticky, monotonic on ramp-up, uncorrelated across flags — all three properties are unit-tested statistically. |
 | **Local evaluation** | Server-side SDK downloads the ruleset (ETag/304) and evaluates in-process in **~2 µs per flag**, with no network call per check. A port of the Java engine, held to **176 shared cross-language conformance vectors** that both builds run, and verified live: **70,000 evaluations, 0 mismatches** against the server. |
+| **Guarded rollouts** | Ramp a variation 1% → 5% → 25% → 50% → 100% while a guardrail metric is watched per step; a significant regression (or a broken traffic split) **rolls back automatically**. Live demo: a buggy release is caught and reverted **8 seconds** in, at 10% exposure (p = 4e-10); a healthy one reaches 100% with no false alarm. Multi-instance safe (`FOR UPDATE SKIP LOCKED` + `@Version`), and a human edit pauses the rollout instead of being overwritten. |
 | **Experimentation** | SDKs report exposures and conversions; results use Wilson intervals, a two-proportion z-test or Welch's t-test, Bonferroni correction for A/B/n, a power estimate for inconclusive tests, and a **sample-ratio-mismatch** χ² check that marks results untrusted when assignment or logging is broken. Only randomized users are analysed; first exposure wins. Every statistic is tested against SciPy/statsmodels reference values. |
 | **Real-time delivery** | Immutable per-environment snapshots cached in memory (no DB on the hot path), invalidated after commit; SSE stream tells SDKs to refresh within milliseconds. |
 | **Horizontal scaling** | Run any number of API instances: invalidations (and SDK key revocations) fan out over **Redis pub/sub**, with a max snapshot age bounding staleness if a message is ever lost. Degrades gracefully — instances boot and serve with Redis down, and resubscribe when it returns. Covered by a test that runs two full instances side by side. |
@@ -100,6 +103,14 @@ To run the API against PostgreSQL: `FFP_DB_URL=jdbc:postgresql://localhost:5432/
 For multi-instance mode add `FFP_CLUSTER_MODE=redis` (plus `FFP_REDIS_HOST`/`FFP_REDIS_PORT`); single-instance mode
 (the default) needs no Redis.
 
+**See a guarded rollout decide on its own** (with the API on :8080 and the dashboard on :5173):
+
+```bash
+cd sdk/js && npm install && npm run build
+node examples/guarded-rollout-demo.mjs --bug   # buggy release → rolled back automatically within seconds
+node examples/guarded-rollout-demo.mjs         # healthy release → 10 → 25 → 50 → 100% in about a minute
+```
+
 The demo project (`demo-app`) is seeded with a progressive release (`new-checkout`), a dependent feature
 (`checkout-upsell`), an A/B/n experiment (`search-algorithm`), per-plan limits (`max-upload-size-mb`),
 a version-gated mobile feature (`mobile-dark-mode`), remote JSON config (`pricing-config`) and a kill switch
@@ -154,6 +165,7 @@ curl -s localhost:8080/api/v1/sdk/evaluate/new-checkout \
 | Segments | `GET/POST …/{p}/segments`, `GET/PUT/DELETE …/segments/{s}` | viewer / editor |
 | Debugger | `POST …/{p}/environments/{e}/evaluate` | viewer |
 | Experiments | `GET/POST …/{p}/experiments`, `GET …/experiments/{x}` (live results), `POST …/{x}/stop` | viewer / editor |
+| Rollouts | `POST …/flags/{f}/environments/{e}/rollouts`, `GET …/{p}/rollouts[/{id}]`, `POST …/rollouts/{id}/pause\|resume\|cancel` | viewer / editor |
 | Audit | `GET …/{p}/audit?resourceKey=&environment=&page=` | viewer |
 | Users | `GET/POST /api/v1/users`, `PUT /api/v1/users/{id}/role` | admin |
 | **SDK** | `POST /api/v1/sdk/evaluate[/{flag}]`, `GET /api/v1/sdk/rules` (ETag), `GET /api/v1/sdk/stream` (SSE), `POST /api/v1/sdk/events` | SDK key |
@@ -164,7 +176,7 @@ All errors are `application/problem+json`; validation failures (422) include an 
 ## Testing
 
 ```bash
-cd backend && mvn verify          # 332 tests: engine, conformance vectors, statistics, integration (H2 by default; set FFP_DB_URL to run on PostgreSQL)
+cd backend && mvn verify          # 337 tests: engine, conformance vectors, statistics, rollouts, integration (H2 by default; set FFP_DB_URL to run on PostgreSQL)
 cd frontend && npm test           # component + logic tests (Vitest, Testing Library)
 cd sdk/js && npm test             # 199 tests: conformance vectors, both clients, events, SSE, backoff
 cd loadtest && mvn gatling:test -Dsimulation=ffp.loadtest.SdkEvaluationSimulation -Drps=1000   # against a running API
@@ -190,6 +202,8 @@ backend/   Spring Boot API
   evaluation/engine   pure evaluator, bucketing, clause matching, validation — no Spring
   evaluation/runtime  snapshot cache, evaluation service + metrics, SSE fan-out
   cluster/            change propagation: apply locally after commit, broadcast via Redis pub/sub
+  experiment/         event ingestion, experiment analysis; stats/ = distributions + analyzer (no dependencies)
+  rollout/            guarded rollouts: decision engine, scheduler, row claiming
   flag/ segment/ environment/ project/ auth/ audit/ sdk/   feature slices (entity, repo, service, controller)
   resources/db/migration   Flyway migrations
 frontend/  React dashboard (TanStack Query, React Router)

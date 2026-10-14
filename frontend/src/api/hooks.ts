@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
-  AuditEntry, Environment, Experiment, MetricType, EnvironmentWithSdkKey, EvaluationResponse, Flag, FlagConfig, FlagSummary, FlagType,
+  AuditEntry, Environment, Experiment, GuardedRollout, MetricType, EnvironmentWithSdkKey, EvaluationResponse, Flag, FlagConfig, FlagSummary, FlagType,
   Page, Project, ProjectCreated, Role, Segment, SegmentRule, Targeting, User, Variation,
 } from './types';
 
@@ -16,6 +16,7 @@ export const keys = {
   audit: (p: string) => ['projects', p, 'audit'] as const,
   users: ['users'] as const,
   experiments: (p: string) => ['projects', p, 'experiments'] as const,
+  rollouts: (p: string) => ['projects', p, 'rollouts'] as const,
 };
 
 // ---------------------------------------------------------------- projects & environments
@@ -296,6 +297,58 @@ export function useStopExperiment(projectKey: string, key: string) {
   return useMutation({
     mutationFn: () => api<Experiment>(`/projects/${enc(projectKey)}/experiments/${enc(key)}/stop`, { method: 'POST' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.experiments(projectKey) }),
+  });
+}
+
+// ---------------------------------------------------------------- guarded rollouts
+
+const isActive = (r?: GuardedRollout) => r?.status === 'RUNNING' || r?.status === 'PAUSED';
+
+export const useRollouts = (projectKey: string) =>
+  useQuery({
+    queryKey: keys.rollouts(projectKey),
+    queryFn: () => api<GuardedRollout[]>(`/projects/${enc(projectKey)}/rollouts`),
+    refetchInterval: (q) => (q.state.data?.some(isActive) ? 5_000 : false),
+  });
+
+/** Polls while the rollout is active so the progress bar and guardrail update live. */
+export const useRollout = (projectKey: string, id: number) =>
+  useQuery({
+    queryKey: [...keys.rollouts(projectKey), id],
+    queryFn: () => api<GuardedRollout>(`/projects/${enc(projectKey)}/rollouts/${id}`),
+    refetchInterval: (q) => (isActive(q.state.data) ? 3_000 : false),
+  });
+
+export interface StartRolloutBody {
+  treatmentVariation: number;
+  controlVariation: number;
+  steps: number[];
+  stepIntervalSeconds: number;
+  minUsersPerStep: number;
+  guardrailEventKey?: string;
+}
+
+export function useStartRollout(projectKey: string, flagKey: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { envKey: string; body: StartRolloutBody }) =>
+      api<GuardedRollout>(`/projects/${enc(projectKey)}/flags/${enc(flagKey)}/environments/${enc(v.envKey)}/rollouts`, { method: 'POST', json: v.body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.rollouts(projectKey) });
+      qc.invalidateQueries({ queryKey: keys.flag(projectKey, flagKey) });
+      qc.invalidateQueries({ queryKey: keys.flags(projectKey) });
+    },
+  });
+}
+
+export function useRolloutAction(projectKey: string, id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (action: 'pause' | 'resume' | 'cancel') => api<GuardedRollout>(`/projects/${enc(projectKey)}/rollouts/${id}/${action}`, { method: 'POST' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.rollouts(projectKey) });
+      qc.invalidateQueries({ queryKey: keys.flags(projectKey) });
+    },
   });
 }
 

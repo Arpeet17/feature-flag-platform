@@ -11,6 +11,7 @@ import { FlagDetailPage } from './pages/FlagDetailPage';
 import { FlagsPage } from './pages/FlagsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProjectsPage } from './pages/ProjectsPage';
+import { RolloutDetailPage, RolloutsPage } from './pages/RolloutsPage';
 import { SegmentsPage } from './pages/SegmentsPage';
 import { UsersPage } from './pages/UsersPage';
 
@@ -36,6 +37,8 @@ export function App() {
             <Route path="flags/:flagKey" element={<FlagDetailPage />} />
             <Route path="segments" element={<SegmentsPage />} />
             <Route path="experiments" element={<ExperimentsPage />} />
+            <Route path="rollouts" element={<RolloutsPage />} />
+            <Route path="rollouts/:rolloutId" element={<RolloutDetailPage />} />
             <Route path="experiments/:experimentKey" element={<ExperimentDetailPage />} />
             <Route path="environments" element={<EnvironmentsPage />} />
             <Route path="audit" element={<AuditPage />} />

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  useCopyTargeting, useFlag, useFlagAction, useFlags, useProject, useSegments, useUpdateFlag, useUpdateTargeting,
+  useCopyTargeting, useFlag, useFlagAction, useFlags, useProject, useRollouts, useSegments, useUpdateFlag, useUpdateTargeting,
 } from '../api/hooks';
 import type { Flag, FlagConfig } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { Badge, CopyButton, EnvDot, ErrorBanner, Field, Modal, Spinner, ValuesInput } from '../components/ui';
+import { StartRolloutModal } from '../components/StartRolloutModal';
 import { useSelectedEnv } from '../components/useSelectedEnv';
 import { formatDateTime, timeAgo } from '../lib/format';
 import { parseVariationValue, stringifyVariationValue, variationLabel } from '../lib/targeting';
@@ -25,6 +26,8 @@ export function FlagDetailPage() {
   const [env, selectEnv] = useSelectedEnv(projectKey, project?.environments);
   const [tab, setTab] = useState<Tab>('targeting');
   const [copying, setCopying] = useState(false);
+  const [rollingOut, setRollingOut] = useState(false);
+  const { data: rollouts } = useRollouts(projectKey);
   const updateTargeting = useUpdateTargeting(projectKey, flagKey);
   const action = useFlagAction(projectKey, flagKey);
   const navigate = useNavigate();
@@ -33,6 +36,8 @@ export function FlagDetailPage() {
   if (error || !flag) return <div className="page"><ErrorBanner error={error ?? new Error('Flag not found')} /></div>;
 
   const config = flag.environments.find((c) => c.environmentKey === env?.key);
+  const activeRollout = rollouts?.find((r) => r.flagKey === flag.key && r.environmentKey === env?.key
+    && (r.status === 'RUNNING' || r.status === 'PAUSED'));
   const otherFlags = (allFlags?.items ?? []).filter((f) => f.key !== flag.key);
 
   const runAction = (kind: 'archive' | 'restore' | 'delete') => {
@@ -101,7 +106,20 @@ export function FlagDetailPage() {
             {can('EDITOR') && env && (project?.environments.length ?? 0) > 1 && (
               <button className="btn btn-sm" onClick={() => setCopying(true)}>Copy from environment…</button>
             )}
+            {can('EDITOR') && env && !activeRollout && !flag.archived && (
+              <button className="btn btn-sm" onClick={() => setRollingOut(true)}>Start guarded rollout…</button>
+            )}
           </div>
+          {activeRollout && (
+            <div className="banner banner-warning">
+              <strong>⇡ Guarded rollout {activeRollout.status === 'PAUSED' ? 'paused' : 'in progress'}</strong> at {activeRollout.currentPercentage}%:
+              the default rule is managed automatically; editing it pauses the rollout.
+              <Link to={`/projects/${projectKey}/rollouts/${activeRollout.id}`}>View rollout →</Link>
+            </div>
+          )}
+          {rollingOut && env && (
+            <StartRolloutModal projectKey={projectKey} flag={flag} envKey={env.key} envName={env.name} onClose={() => setRollingOut(false)} />
+          )}
           {config && env && (
             <div className="detail-grid">
               <TargetingEditor

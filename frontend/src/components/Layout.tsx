@@ -5,6 +5,7 @@ import { useProjects } from '../api/hooks';
 const NAV = [
   { to: 'flags', label: 'Flags', icon: '⚑' },
   { to: 'segments', label: 'Segments', icon: '◎' },
+  { to: 'rollouts', label: 'Rollouts', icon: '⇡' },
   { to: 'experiments', label: 'Experiments', icon: '⚗' },
   { to: 'debugger', label: 'Debugger', icon: '⚙' },
   { to: 'audit', label: 'Audit log', icon: '☰' },
