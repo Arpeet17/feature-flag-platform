@@ -124,10 +124,12 @@ export function RolloutDetailPage() {
 
 function GuardrailPanel({ rollout: r }: { rollout: GuardedRollout }) {
   const a = r.guardrail!;
+  const test = r.guardrailTest;
   const treatment = a.arms.find((x) => x.variation === r.treatmentVariation);
   const control = a.arms.find((x) => x.variation === r.controlVariation);
-  const c = a.comparisons[0];
   const pct = (v?: number) => (v === undefined ? '—' : `${(v * 100).toFixed(2)}%`);
+  const status = !test || test.verdict === 'INSUFFICIENT_DATA' ? '○ Gathering data'
+    : test.verdict === 'WORSE' ? '▼ Worse' : test.verdict === 'BETTER' ? '▲ Better' : '● No regression detected';
   return (
     <section className="card section">
       <div className="section-head">
@@ -140,12 +142,20 @@ function GuardrailPanel({ rollout: r }: { rollout: GuardedRollout }) {
         <div><div className="tiny muted">{r.controlLabel} (control)</div><div className="big">{pct(control?.estimate)}</div>
           <div className="tiny muted">{control?.users.toLocaleString() ?? 0} users · CI {pct(control?.ciLow)}–{pct(control?.ciHigh)}</div></div>
         <div><div className="tiny muted">Status</div>
-          <div className="big">{c?.verdict === 'WORSE' ? '▼ Worse' : c?.verdict === 'INSUFFICIENT_DATA' ? '○ Gathering data' : '● Healthy'}</div>
-          <div className="tiny muted">{c && c.verdict !== 'INSUFFICIENT_DATA' ? `p = ${c.pValue.toFixed(3)}` : 'needs ≥ 100 users and 5 events per arm'}</div></div>
+          <div className="big">{status}</div>
+          <div className="tiny muted" title="Sequential test (mSPRT): the p-value stays valid however often the guardrail is checked. Rolls back when it drops below α and treatment is worse.">
+            {test && test.verdict !== 'INSUFFICIENT_DATA'
+              ? `sequential p = ${formatP(test.pValue)} · rolls back below ${formatP(test.alpha)}`
+              : 'needs ≥ 100 users and 5 events per arm'}
+          </div></div>
       </div>
       {a.sampleRatio.mismatch && <div className="banner banner-error">Sample ratio mismatch: traffic isn't split as configured.</div>}
     </section>
   );
+}
+
+function formatP(p: number): string {
+  return p >= 0.001 ? p.toFixed(3) : p.toExponential(1);
 }
 
 export function formatInterval(seconds: number): string {

@@ -1,0 +1,96 @@
+# Service level objectives for the SDK API (what applications depend on at runtime):
+#
+#   Availability  99.9% of SDK requests succeed (non-5xx)       error budget 0.1%
+#   Latency       99%   of evaluations complete within 50 ms    error budget 1%
+#
+# Alerts use multi-window burn rates (Google SRE Workbook, ch. 5): page when the budget burns
+# 14.4x faster than sustainable (2% of a 30-day budget in 1 hour), open a ticket at 6x over
+# 6 hours. The short window makes an alert resolve quickly once the problem stops.
+# Unit tests: rules.test.yml (`promtool test rules rules.test.yml`).
+groups:
+  - name: ffp-slo-recording
+    rules:
+      # --- availability: share of SDK requests that failed -------------------------------
+      # `or vector(0)`: with no 5xx at all there is no error series, and the ratio must be 0, not empty.
+      - record: ffp:sdk_errors:ratio_rate5m
+        expr: >-
+          (sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/(evaluate.*|rules|events)", status=~"5.."}[5m])) or vector(0))
+          / sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/(evaluate.*|rules|events)"}[5m]))
+      - record: ffp:sdk_errors:ratio_rate30m
+        expr: >-
+          (sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/(evaluate.*|rules|events)", status=~"5.."}[30m])) or vector(0))
+          / sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/(evaluate.*|rules|events)"}[30m]))
+      - record: ffp:sdk_errors:ratio_rate1h
+        expr: >-
+          (sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/(evaluate.*|rules|events)", status=~"5.."}[1h])) or vector(0))
+          / sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/(evaluate.*|rules|events)"}[1h]))
+      - record: ffp:sdk_errors:ratio_rate6h
+        expr: >-
+          (sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/(evaluate.*|rules|events)", status=~"5.."}[6h])) or vector(0))
+          / sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/(evaluate.*|rules|events)"}[6h]))
+
+      # --- latency: share of evaluations slower than 50 ms --------------------------------
+      # The 50 ms bucket exists exactly because of management.metrics.distribution.slo.
+      - record: ffp:sdk_slow_evaluations:ratio_rate5m
+        expr: >-
+          1 - sum(rate(http_server_requests_seconds_bucket{uri=~"/api/v1/sdk/evaluate.*", le="0.05"}[5m]))
+          / sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/evaluate.*"}[5m]))
+      - record: ffp:sdk_slow_evaluations:ratio_rate30m
+        expr: >-
+          1 - sum(rate(http_server_requests_seconds_bucket{uri=~"/api/v1/sdk/evaluate.*", le="0.05"}[30m]))
+          / sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/evaluate.*"}[30m]))
+      - record: ffp:sdk_slow_evaluations:ratio_rate1h
+        expr: >-
+          1 - sum(rate(http_server_requests_seconds_bucket{uri=~"/api/v1/sdk/evaluate.*", le="0.05"}[1h]))
+          / sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/evaluate.*"}[1h]))
+      - record: ffp:sdk_slow_evaluations:ratio_rate6h
+        expr: >-
+          1 - sum(rate(http_server_requests_seconds_bucket{uri=~"/api/v1/sdk/evaluate.*", le="0.05"}[6h]))
+          / sum(rate(http_server_requests_seconds_count{uri=~"/api/v1/sdk/evaluate.*"}[6h]))
+
+  - name: ffp-slo-alerts
+    rules:
+      - alert: SdkErrorBudgetFastBurn
+        expr: ffp:sdk_errors:ratio_rate1h > (14.4 * 0.001) and ffp:sdk_errors:ratio_rate5m > (14.4 * 0.001)
+        labels: { severity: page, slo: sdk-availability }
+        annotations:
+          summary: SDK API is burning its availability error budget 14x too fast
+          description: "{{ $value | humanizePercentage }} of SDK requests failed in the last 5 minutes (SLO: 99.9% succeed)."
+      - alert: SdkErrorBudgetSlowBurn
+        expr: ffp:sdk_errors:ratio_rate6h > (6 * 0.001) and ffp:sdk_errors:ratio_rate30m > (6 * 0.001)
+        labels: { severity: ticket, slo: sdk-availability }
+        annotations:
+          summary: SDK API availability budget will be exhausted in under 5 days at this rate
+      - alert: SdkLatencyBudgetFastBurn
+        expr: ffp:sdk_slow_evaluations:ratio_rate1h > (14.4 * 0.01) and ffp:sdk_slow_evaluations:ratio_rate5m > (14.4 * 0.01)
+        labels: { severity: page, slo: sdk-latency }
+        annotations:
+          summary: Flag evaluations are too slow
+          description: "{{ $value | humanizePercentage }} of evaluations took over 50 ms in the last 5 minutes (SLO: 1%)."
+      - alert: SdkLatencyBudgetSlowBurn
+        expr: ffp:sdk_slow_evaluations:ratio_rate6h > (6 * 0.01) and ffp:sdk_slow_evaluations:ratio_rate30m > (6 * 0.01)
+        labels: { severity: ticket, slo: sdk-latency }
+        annotations:
+          summary: Flag evaluation latency budget will be exhausted in under 5 days at this rate
+
+  - name: ffp-health
+    rules:
+      - alert: InstanceDown
+        expr: up{job="ffp"} == 0
+        for: 1m
+        labels: { severity: page }
+        annotations:
+          summary: "API instance {{ $labels.instance }} is not being scraped"
+      - alert: ClusterSyncFailing
+        # Instances can't tell each other about changes: they fall back to the max snapshot age,
+        # so SDKs on other instances may serve stale flags for up to that long.
+        expr: sum by (instance) (rate(ffp_cluster_messages_total{outcome="publish_failed"}[5m])) > 0
+        for: 2m
+        labels: { severity: ticket }
+        annotations:
+          summary: "{{ $labels.instance }} cannot publish cache invalidations to Redis"
+      - alert: GuardedRolloutRolledBack
+        expr: sum(increase(ffp_rollouts_decisions_total{outcome="ROLLED_BACK"}[10m])) > 0
+        labels: { severity: info }
+        annotations:
+          summary: A guarded rollout was rolled back automatically; check the rollout's guardrail result

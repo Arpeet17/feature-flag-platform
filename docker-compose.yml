@@ -4,6 +4,8 @@
 # toggle a flag and both instances serve the change (try the SDK endpoints on :8080 and :8081).
 # Dashboard: http://localhost:3000  (admin@ffp.local / admin123)
 # API docs:  http://localhost:8080/swagger-ui.html
+# Grafana:   http://localhost:3001  (SLOs, traffic, cache, rollouts; anonymous read access)
+# Prometheus http://localhost:9090/alerts  (SLO burn-rate alerts; rules are unit tested with promtool)
 services:
   postgres:
     image: postgres:16-alpine
@@ -70,6 +72,30 @@ services:
       - backend-replica
     ports:
       - "3000:80"
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    depends_on:
+      - backend
+      - backend-replica
+    volumes:
+      - ./observability/prometheus:/etc/prometheus:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    depends_on:
+      - prometheus
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/feature-flag-platform.json
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
 
 volumes:
   pgdata:

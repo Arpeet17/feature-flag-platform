@@ -180,7 +180,8 @@ public class RolloutService {
                 r.getTreatmentVariation(), label(variations, r.getTreatmentVariation()), r.getControlVariation(),
                 label(variations, r.getControlVariation()), r.stepList(), r.getCurrentStep(), r.currentPercentage(), r.getStatus(),
                 r.getStepIntervalSeconds(), r.getMinUsersPerStep(), r.getGuardrailEventKey(), r.getStepStartedAt(),
-                r.getNextCheckAt(), r.getLastDecision(), r.getCreatedBy(), r.getCreatedAt(), entries, guardrail);
+                r.getNextCheckAt(), r.getLastDecision(), r.getCreatedBy(), r.getCreatedAt(), entries,
+                guardrail == null ? null : guardrail.analysis(), guardrail == null ? null : guardrail.test());
     }
 
     private static String label(List<Variation> variations, int index) {

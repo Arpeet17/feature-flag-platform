@@ -108,6 +108,19 @@ jobs:
       # Running them needs a live stack (see the manual "Load test" workflow); compiling keeps them from rotting.
       - run: mvn -B -q test-compile
 
+  observability:
+    name: Alert rules and dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Prometheus config and unit-test the SLO alert rules
+        run: |
+          promtool() { docker run --rm -v "$PWD/observability/prometheus:/p" -w /p --entrypoint promtool prom/prometheus:v3.5.0 "$@"; }
+          promtool check config prometheus.yml
+          promtool test rules rules.test.yml
+      - name: Dashboard is valid JSON
+        run: python3 -m json.tool observability/grafana/dashboards/feature-flag-platform.json > /dev/null
+
   docker:
     runs-on: ubuntu-latest
     needs: [backend, frontend]

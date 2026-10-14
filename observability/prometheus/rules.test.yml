@@ -1,0 +1,119 @@
+# promtool test rules rules.test.yml
+# Synthetic SDK traffic proves the burn-rate alerts fire on a real outage and stay quiet on
+# noise. 1-minute samples; counters are cumulative request counts.
+rule_files:
+  - rules.yml
+evaluation_interval: 1m
+
+tests:
+  # 1,000 req/min, 5% failing for the whole hour: 50x the budget burn → page.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="200", instance="a"}'
+        values: '0+950x70'
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="503", instance="a"}'
+        values: '0+50x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: SdkErrorBudgetFastBurn
+        exp_alerts:
+          - exp_labels: { severity: page, slo: sdk-availability }
+            exp_annotations:
+              summary: SDK API is burning its availability error budget 14x too fast
+              description: "5% of SDK requests failed in the last 5 minutes (SLO: 99.9% succeed)."
+
+  # 0.5% failing: above the 99.9% target, but well below the 1.44% fast-burn threshold → no page.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="200", instance="a"}'
+        values: '0+995x70'
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="500", instance="a"}'
+        values: '0+5x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: SdkErrorBudgetFastBurn
+        exp_alerts: []
+
+  # A short spike that has already stopped: the 1h window is still elevated, but the 5m window
+  # has recovered, so the alert does not fire (the reason for the second window).
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="200", instance="a"}'
+        values: '0+800x10 8000+1000x60'
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="503", instance="a"}'
+        values: '0+200x10 2000+0x60'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: SdkErrorBudgetFastBurn
+        exp_alerts: []
+
+  # Client errors (4xx) are the caller's fault and don't spend the budget; the SSE stream is
+  # long-lived and excluded from the request SLO.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="401", instance="a"}'
+        values: '0+500x70'
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/stream", status="503", instance="a"}'
+        values: '0+500x70'
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="200", instance="a"}'
+        values: '0+500x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: SdkErrorBudgetFastBurn
+        exp_alerts: []
+
+  # Latency: 30% of evaluations slower than 50 ms → page.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_bucket{uri="/api/v1/sdk/evaluate", le="0.05", instance="a"}'
+        values: '0+700x70'
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="200", instance="a"}'
+        values: '0+1000x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: SdkLatencyBudgetFastBurn
+        exp_alerts:
+          - exp_labels: { severity: page, slo: sdk-latency }
+            exp_annotations:
+              summary: Flag evaluations are too slow
+              description: "30% of evaluations took over 50 ms in the last 5 minutes (SLO: 1%)."
+
+  # An instance that stops answering pages after one minute, not on a single missed scrape.
+  - interval: 30s
+    input_series:
+      - series: 'up{job="ffp", instance="backend-replica:8080"}'
+        values: '1 1 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 1m30s
+        alertname: InstanceDown
+        exp_alerts: []
+      - eval_time: 2m30s
+        alertname: InstanceDown
+        exp_alerts:
+          - exp_labels: { severity: page, job: ffp, instance: "backend-replica:8080" }
+            exp_annotations:
+              summary: "API instance backend-replica:8080 is not being scraped"
+
+  - interval: 1m
+    input_series:
+      - series: 'ffp_rollouts_decisions_total{outcome="ROLLED_BACK", instance="a"}'
+        values: '0 0 0 1 1 1'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: GuardedRolloutRolledBack
+        exp_alerts:
+          - exp_labels: { severity: info }
+            exp_annotations:
+              summary: A guarded rollout was rolled back automatically; check the rollout's guardrail result
+
+  # No server errors at all: the ratio is 0 (not missing), so dashboards and burn rates show a value.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{uri="/api/v1/sdk/evaluate", status="200", instance="a"}'
+        values: '0+1000x70'
+    promql_expr_test:
+      - expr: ffp:sdk_errors:ratio_rate1h
+        eval_time: 65m
+        exp_samples:
+          - labels: 'ffp:sdk_errors:ratio_rate1h'
+            value: 0

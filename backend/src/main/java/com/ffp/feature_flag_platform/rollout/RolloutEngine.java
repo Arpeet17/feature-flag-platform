@@ -8,13 +8,17 @@ import com.ffp.feature_flag_platform.experiment.EventStore;
 import com.ffp.feature_flag_platform.experiment.stats.ExperimentAnalyzer;
 import com.ffp.feature_flag_platform.experiment.stats.ExperimentAnalyzer.Analysis;
 import com.ffp.feature_flag_platform.experiment.stats.ExperimentAnalyzer.ArmData;
-import com.ffp.feature_flag_platform.experiment.stats.ExperimentAnalyzer.Comparison;
 import com.ffp.feature_flag_platform.experiment.stats.ExperimentAnalyzer.MetricType;
 import com.ffp.feature_flag_platform.experiment.stats.ExperimentAnalyzer.Verdict;
+import com.ffp.feature_flag_platform.experiment.stats.SequentialTest;
 import com.ffp.feature_flag_platform.flag.FlagDtos.FlagConfigResponse;
 import com.ffp.feature_flag_platform.flag.FlagDtos.UpdateTargetingRequest;
 import com.ffp.feature_flag_platform.flag.FlagService;
+import com.ffp.feature_flag_platform.rollout.RolloutDtos.GuardrailTest;
+import com.ffp.feature_flag_platform.rollout.RolloutDtos.GuardrailVerdict;
 import com.ffp.feature_flag_platform.rollout.RolloutHistory.Action;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -35,7 +39,10 @@ import java.util.Map;
  *       reaching 100% completes the rollout.</li>
  * </ol>
  * The guardrail is checked several times per step, so a bad release is rolled back as soon as
- * the evidence is significant rather than at the end of the step.
+ * the evidence is significant rather than at the end of the step. Because it is checked
+ * repeatedly, it uses a sequential test ({@link SequentialTest}) rather than a z-test, and
+ * splits α across the guarded steps, so a healthy release is rolled back with probability
+ * at most α overall.
  */
 @Component
 public class RolloutEngine {
@@ -51,15 +58,17 @@ public class RolloutEngine {
     private final FlagService flags;
     private final EventStore events;
     private final TransactionTemplate tx;
+    private final MeterRegistry meters;
 
     public RolloutEngine(RolloutRepository rollouts, RolloutHistoryRepository history, RolloutLock lock, FlagService flags,
-                         EventStore events, TransactionTemplate tx) {
+                         EventStore events, TransactionTemplate tx, MeterRegistry meters) {
         this.rollouts = rollouts;
         this.history = history;
         this.lock = lock;
         this.flags = flags;
         this.events = events;
         this.tx = tx;
+        this.meters = meters;
     }
 
     /** Processes one rollout in its own transaction. Safe to call concurrently from any instance. */
@@ -76,6 +85,10 @@ public class RolloutEngine {
             r.setNextCheckAt(now.plus(checkInterval(r)));
             return result;
         });
+        if (outcome != Outcome.SKIPPED) {
+            Counter.builder("ffp.rollouts.decisions").tag("outcome", outcome.name())
+                    .description("Guarded rollout checks, by decision").register(meters).increment();
+        }
         if (outcome != Outcome.SKIPPED && outcome != Outcome.HELD) {
             log.info("Rollout {} → {}", rolloutId, outcome);
         }
@@ -94,17 +107,17 @@ public class RolloutEngine {
         }
 
         int percentage = r.currentPercentage();
-        Analysis guardrail = guardrail(r, now);
-        if (guardrail != null) {
+        Guardrail g = guardrail(r, now);
+        Analysis guardrail = g == null ? null : g.analysis();
+        if (g != null) {
             if (guardrail.sampleRatio().mismatch()) {
                 return rollBack(r, now, "Sample ratio mismatch (p = %.2g): users aren't split %d/%d as configured, so the "
                         .formatted(guardrail.sampleRatio().pValue(), percentage, 100 - percentage)
                         + "guardrail can't be trusted. Rolled back to be safe.");
             }
-            Comparison c = guardrail.comparisons().getFirst();
-            if (c.verdict() == Verdict.WORSE) {
-                return rollBack(r, now, "Guardrail '%s' significantly worse at %d%%: %s (p = %.2g). Rolled back."
-                        .formatted(r.getGuardrailEventKey(), percentage, describe(guardrail), c.pValue()));
+            if (g.test().verdict() == GuardrailVerdict.WORSE) {
+                return rollBack(r, now, "Guardrail '%s' significantly worse at %d%%: %s (sequential p = %.2g < α = %.3g). Rolled back."
+                        .formatted(r.getGuardrailEventKey(), percentage, describe(guardrail), g.test().pValue(), g.test().alpha()));
             }
         }
 
@@ -127,11 +140,17 @@ public class RolloutEngine {
                 .formatted(r.getCurrentStep() + 1, percentage, treatmentUsers, health));
     }
 
+    /** Descriptive analysis (rates, intervals, sample ratio) plus the sequential test that decides. */
+    record Guardrail(Analysis analysis, GuardrailTest test) {
+    }
+
     /**
      * Guardrail analysis for users first exposed during the current step. Restricting to the
-     * step keeps the comparison valid: within it, assignment follows one fixed split.
+     * step keeps the comparison valid: within it, assignment follows one fixed split. Each step
+     * is a fresh sequential test on fresh users, so α is split evenly across the guarded steps
+     * (Bonferroni): over the whole rollout, a healthy release is rolled back with probability ≤ α.
      */
-    Analysis guardrail(Rollout r, Instant now) {
+    Guardrail guardrail(Rollout r, Instant now) {
         if (r.getGuardrailEventKey() == null || r.currentPercentage() >= 100) {
             return null;
         }
@@ -146,8 +165,24 @@ public class RolloutEngine {
                 withLabel(arms.getOrDefault(c, new ArmData(c, null, 0, 0, 0, 0)), "control"),
                 withLabel(arms.getOrDefault(t, new ArmData(t, null, 0, 0, 0, 0)), "treatment"));
         int pct = r.currentPercentage();
-        return ExperimentAnalyzer.analyze(pair, c, MetricType.CONVERSION, false, ALPHA,
+        Analysis analysis = ExperimentAnalyzer.analyze(pair, c, MetricType.CONVERSION, false, ALPHA,
                 Map.of(t, pct * 1_000, c, (100 - pct) * 1_000));
+
+        long guardedSteps = Math.max(1, r.stepList().stream().filter(step -> step < 100).count());
+        double alpha = ALPHA / guardedSteps;
+        ArmData control = pair.get(0);
+        ArmData treatment = pair.get(1);
+        SequentialTest.Result test = SequentialTest.conversion(treatment.users(), treatment.conversions(),
+                control.users(), control.conversions(), alpha);
+        GuardrailVerdict verdict;
+        if (analysis.comparisons().getFirst().verdict() == Verdict.INSUFFICIENT_DATA) {
+            verdict = GuardrailVerdict.INSUFFICIENT_DATA;
+        } else if (!test.rejected()) {
+            verdict = GuardrailVerdict.NO_EVIDENCE;
+        } else {
+            verdict = test.difference() > 0 ? GuardrailVerdict.WORSE : GuardrailVerdict.BETTER; // lower is better
+        }
+        return new Guardrail(analysis, new GuardrailTest("mSPRT", alpha, test.pValue(), test.logLikelihoodRatio(), verdict));
     }
 
     // ------------------------------------------------------------------ transitions

@@ -29,7 +29,7 @@ public class EvaluationService {
         this.meters = meters;
         this.batchTimer = Timer.builder("ffp.evaluation.batch")
                 .description("Time to evaluate all flags for one context")
-                .publishPercentiles(0.5, 0.95, 0.99)
+                .publishPercentileHistogram()
                 .register(meters);
     }
 

@@ -41,6 +41,20 @@ public final class RolloutDtos {
                                   List<Integer> steps, int currentStep, int currentPercentage, Rollout.Status status,
                                   int stepIntervalSeconds, int minUsersPerStep, String guardrailEventKey,
                                   Instant stepStartedAt, Instant nextCheckAt, String lastDecision,
-                                  String createdBy, Instant createdAt, List<HistoryEntry> history, Analysis guardrail) {
+                                  String createdBy, Instant createdAt, List<HistoryEntry> history, Analysis guardrail,
+                                  GuardrailTest guardrailTest) {
+    }
+
+    public enum GuardrailVerdict { INSUFFICIENT_DATA, NO_EVIDENCE, WORSE, BETTER }
+
+    /**
+     * The test that decides rollbacks: valid under continuous monitoring (see SequentialTest).
+     *
+     * @param alpha              significance level for this step (the rollout's α split across its guarded steps)
+     * @param pValue             always-valid p-value; the rollout rolls back when it drops below alpha and treatment is worse
+     * @param logLikelihoodRatio evidence that the rates differ (ln Λ)
+     */
+    public record GuardrailTest(String method, double alpha, double pValue, double logLikelihoodRatio,
+                                GuardrailVerdict verdict) {
     }
 }

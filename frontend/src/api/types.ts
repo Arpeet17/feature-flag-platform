@@ -296,6 +296,15 @@ export interface Experiment {
   results: { from: string; to: string; excludedNonRandomized: number; analysis: Analysis } | null;
 }
 
+/** The sequential test that decides rollbacks; its p-value stays valid however often it is checked. */
+export interface GuardrailTest {
+  method: string;
+  alpha: number;
+  pValue: number;
+  logLikelihoodRatio: number;
+  verdict: 'INSUFFICIENT_DATA' | 'NO_EVIDENCE' | 'WORSE' | 'BETTER';
+}
+
 export type RolloutStatus = 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'ROLLED_BACK' | 'CANCELLED';
 
 export interface RolloutHistoryEntry {
@@ -329,4 +338,5 @@ export interface GuardedRollout {
   createdAt: string;
   history?: RolloutHistoryEntry[];
   guardrail?: Analysis;
+  guardrailTest?: GuardrailTest;
 }

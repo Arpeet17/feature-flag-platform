@@ -96,12 +96,18 @@ class RolloutIntegrationTest extends IntegrationTest {
                     .header("X-SDK-Key", s.sdk())).andExpect(status().isAccepted());
         }
 
+        JsonNode live = rollout(s).get("guardrailTest");
+        assertThat(live.get("method").asString()).isEqualTo("mSPRT");
+        assertThat(live.get("verdict").asString()).isEqualTo("WORSE");
+        assertThat(live.get("pValue").asDouble()).isLessThan(live.get("alpha").asDouble());
+
         // Long before the step's hour is up, the guardrail check catches it.
         assertThat(engine.process(s.rolloutId(), Instant.now().plusSeconds(61))).isEqualTo(Outcome.ROLLED_BACK);
 
         JsonNode r = rollout(s);
         assertThat(r.get("status").asString()).isEqualTo("ROLLED_BACK");
-        assertThat(r.get("lastDecision").asString()).contains("significantly worse");
+        assertThat(r.get("lastDecision").asString()).contains("significantly worse").contains("sequential p");
+        assertThat(r.has("guardrailTest")).as("only shown while active").isFalse();
         assertThat(fallthrough(s).get("variation").asInt()).as("everyone back on control").isEqualTo(1);
         for (int i = 0; i < 20; i++) {
             sdkEvaluate(s.sdk(), "f", Map.of("key", "u" + i)).andExpect(jsonPath("$.value").value(false));

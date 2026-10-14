@@ -1,0 +1,14 @@
+# Scrapes both API instances. Every series carries an `instance` label, so per-replica views
+# (e.g. SSE connections) and fleet-wide aggregates come from the same data.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files:
+  - rules.yml
+
+scrape_configs:
+  - job_name: ffp
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["backend:8080", "backend-replica:8080"]

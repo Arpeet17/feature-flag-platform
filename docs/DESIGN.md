@@ -70,6 +70,15 @@ Evaluation volume is orders of magnitude higher than write volume, so reads must
   finishes and would install a stale snapshot indefinitely. Each environment has a generation counter; a
   rebuild only installs its result if the generation is unchanged, checked atomically with the write inside
   `ConcurrentHashMap.compute`. `SnapshotCacheTest` reproduces the interleaving deterministically with latches.
+* **Single flight.** Concurrent misses for one environment share one load: the first request loads, the rest
+  wait on its `CompletableFuture`. Without it, every request that arrives during a rebuild starts its own:
+  a freshly started instance hit by 400 concurrent requests rebuilt the same snapshot 110–127 times and
+  queued on the connection pool (server-side max 1.7–1.8 s); with it, one rebuild (max ~0.8 s, the rest is
+  JIT warm-up). The catch is freshness: a request that arrives *after* an invalidation must not join a load
+  that started before it. Each in-flight load records the generation it started at, and a request only joins
+  a load of the current generation; otherwise it starts its own. Tested: 200 concurrent misses → 1 load; a
+  post-invalidation reader never receives the pre-invalidation read; a failed load fails its joiners and is
+  not cached.
 * Invalidation happens in a `@TransactionalEventListener(AFTER_COMMIT)`: invalidating before commit would let
   a concurrent reader rebuild from the *old* data; invalidating on rollback would be wasteful. The loader uses
   `REQUIRES_NEW` because it may run inside that after-commit callback.
@@ -191,10 +200,24 @@ statistics, cache invalidation, audit.
   and the sample-ratio check are valid. The guardrail is checked several times per step (interval/5, 2–60 s),
   so a regression is caught as soon as the evidence is significant, not at the end of the step.
 * **Decision rules.** SRM → roll back (the assignment can't be trusted, so neither can the guardrail).
-  Treatment significantly worse (two-proportion z-test, α = 0.05) → roll back. Otherwise advance once the
-  step's time has elapsed *and* it has seen `minUsersPerStep` treatment users. Low traffic means waiting, not
+  Treatment significantly worse by the sequential test below → roll back. Otherwise advance once the step's
+  time has elapsed *and* it has seen `minUsersPerStep` treatment users. Low traffic means waiting, not
   advancing blind. "Not significantly worse" is not proof of safety; the minimum-users gate and the
   multi-step ramp are what bound the risk.
+* **Peeking, and why the guardrail uses a sequential test.** The first version ran a two-proportion z-test at
+  α = 0.05 on every check. The live demo then rolled back a *healthy* release (p = 0.049). That was no fluke:
+  a z-test is valid when run once, and checking it every few seconds gives it many chances to cross 0.05 by
+  chance. Simulated A/A rollouts (no real difference) were rolled back 22% of the time with 15 checks, and
+  50% with 240. The guardrail now uses a **mixture sequential probability ratio test** (Johari et al.,
+  *Always Valid Inference*): at each check it computes the likelihood ratio Λ of "the rates differ" (effect
+  drawn from N(0, τ²), τ = 0.1 σ) against "they're equal". Under the null Λ is a martingale, so by Ville's
+  inequality it reaches 1/α with probability ≤ α *however often it is checked*. Each step is a fresh test on
+  fresh users, so α is split across the guarded steps (Bonferroni); over a whole rollout, a healthy release
+  is rolled back with probability ≤ α. Measured: 0.6–1.9% false rollbacks, with every simulated 2% → 8%
+  regression still caught, and in the live demo within ~10 s. The cost is power for *small* effects (a z-test
+  run once at p = 0.035 has sequential p = 0.39), which is the right trade for a guardrail: it exists to stop
+  large regressions fast, not to measure small ones. `SequentialTestTest` reproduces the peeking problem and
+  the fix; the dashboard shows the always-valid p-value next to the threshold it is compared against.
 * **Many instances, one decision.** Every instance runs the scheduler. Each due rollout is claimed with
   `SELECT … FOR UPDATE SKIP LOCKED` inside the processing transaction, so exactly one instance processes it
   and the others move on instead of queueing. `@Version` on the rollout and optimistic locking on the flag
@@ -237,8 +260,29 @@ statistics, cache invalidation, audit.
 
 ## 7. Observability
 
-* `ffp.evaluations{environment,flag,reason}` counter, `ffp.evaluation.batch` timer with p50/p95/p99,
-  `ffp.stream.connections` gauge — exposed at `/actuator/prometheus`.
+`docker compose up` starts Prometheus (scraping both API instances) and Grafana with the platform dashboard
+provisioned from `observability/`.
+
+* **Metrics.** `ffp.evaluations{environment,flag,reason}`, `ffp.stream.connections`, `ffp.cluster.messages
+  {outcome}`, `ffp.snapshot.load` (one per cache miss) and `ffp.snapshot.invalidations`,
+  `ffp.events.ingested{kind}`, `ffp.rollouts.decisions{outcome}`, plus HTTP, JVM and connection-pool metrics.
+  Flag keys are bounded per project, so tagging by flag keeps cardinality under control; user keys never
+  become labels.
+* **Histograms, not client-side percentiles.** Latency is published as histogram buckets: percentiles
+  computed inside each instance can't be averaged across instances, buckets can (`histogram_quantile` over
+  the summed rates). The SLO boundaries (5–250 ms) are added as explicit buckets, so "share of evaluations
+  under 50 ms" is an exact counter ratio, not an interpolation.
+* **SLOs.** For the SDK API, the part applications depend on at runtime: 99.9% of requests succeed (5xx
+  only; a 401 is the caller's problem) and 99% of evaluations complete within 50 ms. The SSE stream is
+  long-lived and excluded from request SLOs; its health shows as connected streams per instance.
+* **Burn-rate alerts** (Google SRE Workbook): page when the error budget burns 14.4× too fast over both 1 h
+  and 5 min (2% of a 30-day budget in an hour), open a ticket at 6× over 6 h and 30 min. The long window
+  avoids paging on a blip, and the short one makes the alert stop as soon as the problem does. Ratios are
+  recording rules; `rules.test.yml` feeds synthetic series to `promtool` and checks that a 5% outage pages,
+  0.5% does not, a spike that has already stopped does not, 4xx and SSE errors do not count, slow evaluations
+  page, and an instance must be down for a full minute.
+* **Rollouts on every graph.** Rollbacks and completions are Grafana annotations, so a latency or error
+  change can be lined up against the release that caused it.
 * Per-flag, per-variation evaluation counts and "last evaluated" are kept in-process with `LongAdder`
   (contention-free on the hot path) and shown in the dashboard. Combined with the `temporary` flag and last
   change time, they drive the **"Stale?"** badge — flags are technical debt with an expiry date.

@@ -8,11 +8,13 @@ Full stack: **Spring Boot 4 / Java 21** API, **React 19 + TypeScript** dashboard
 
 ![Flags across environments](docs/screenshots/flags.png)
 
-| Guarded rollouts | Automatic rollback |
+| Guarded rollout in progress | Automatic rollback |
 |---|---|
-| ![Rollouts](docs/screenshots/rollouts.png) | ![Rolled back](docs/screenshots/rollout-rolled-back.png) |
+| ![Rollout running](docs/screenshots/rollout-running.png) | ![Rolled back](docs/screenshots/rollout-rolled-back.png) |
 | **Experiment results** | **Sample ratio mismatch caught** |
 | ![Experiment results](docs/screenshots/experiment.png) | ![SRM detected](docs/screenshots/experiment-srm.png) |
+
+![Grafana: SLOs, traffic and latency](docs/screenshots/grafana.png)
 
 ## Highlights
 
@@ -21,14 +23,15 @@ Full stack: **Spring Boot 4 / Java 21** API, **React 19 + TypeScript** dashboard
 | **Evaluation engine** | Pure, side-effect-free Java engine: individual targets → rules (AND of clauses, first match wins) → default rule; 15 operators incl. regex, SemVer and date comparisons, negation, reusable **segments**, flag **prerequisites** with cycle detection, and an explained **reason** for every result. |
 | **Percentage rollouts** | Deterministic MurmurHash3 bucketing with per-flag salt, 0.001% granularity, custom bucketing attribute (e.g. roll out per `orgId`). Sticky, monotonic on ramp-up, uncorrelated across flags — all three properties are unit-tested statistically. |
 | **Local evaluation** | Server-side SDK downloads the ruleset (ETag/304) and evaluates in-process in **~2 µs per flag**, with no network call per check. A port of the Java engine, held to **176 shared cross-language conformance vectors** that both builds run, and verified live: **70,000 evaluations, 0 mismatches** against the server. |
-| **Guarded rollouts** | Ramp a variation 1% → 5% → 25% → 50% → 100% while a guardrail metric is watched per step; a significant regression (or a broken traffic split) **rolls back automatically**. Live demo: a buggy release is caught and reverted **8 seconds** in, at 10% exposure (p = 4e-10); a healthy one reaches 100% with no false alarm. Multi-instance safe (`FOR UPDATE SKIP LOCKED` + `@Version`), and a human edit pauses the rollout instead of being overwritten. |
+| **Guarded rollouts** | Ramp a variation 1% → 5% → 25% → 50% → 100% while a guardrail metric is watched per step; a significant regression (or a broken traffic split) **rolls back automatically**. The guardrail is checked every few seconds, so it uses a **sequential test (mSPRT)** whose p-value stays valid under continuous monitoring: re-running a z-test at each check rolled back **22–50% of healthy releases** in simulation (and one in the live demo); the sequential test keeps that under α, and still catches a buggy release **~10 seconds** in, at 10% exposure. Multi-instance safe (`FOR UPDATE SKIP LOCKED` + `@Version`), and a human edit pauses the rollout instead of being overwritten. |
 | **Experimentation** | SDKs report exposures and conversions; results use Wilson intervals, a two-proportion z-test or Welch's t-test, Bonferroni correction for A/B/n, a power estimate for inconclusive tests, and a **sample-ratio-mismatch** χ² check that marks results untrusted when assignment or logging is broken. Only randomized users are analysed; first exposure wins. Every statistic is tested against SciPy/statsmodels reference values. |
-| **Real-time delivery** | Immutable per-environment snapshots cached in memory (no DB on the hot path), invalidated after commit; SSE stream tells SDKs to refresh within milliseconds. |
+| **Real-time delivery** | Immutable per-environment snapshots cached in memory (no DB on the hot path), invalidated after commit; SSE stream tells SDKs to refresh within milliseconds. Concurrent cache misses share **one** rebuild (single flight): a cold instance hit by 400 requests rebuilt the same snapshot 110–127 times before, once after, halving its worst-case latency. |
 | **Horizontal scaling** | Run any number of API instances: invalidations (and SDK key revocations) fan out over **Redis pub/sub**, with a max snapshot age bounding staleness if a message is ever lost. Degrades gracefully — instances boot and serve with Redis down, and resubscribe when it returns. Covered by a test that runs two full instances side by side. |
 | **Safety** | Optimistic locking on targeting (409 instead of lost updates), server-side validation with path-addressed errors, archive-before-delete, dependency checks, production toggle confirmation, every change audited **in the same transaction** with before/after state. |
 | **Security** | JWT for people with an `ADMIN ⊃ EDITOR ⊃ VIEWER` role hierarchy enforced by method security; per-environment SDK keys stored only as SHA-256 hashes, rotatable; RFC 9457 problem responses. |
 | **Performance** | Load-tested with Gatling: **4,000 req/s with zero errors** on a shared 4-vCPU box (p99 7 ms at 1,000 req/s); evaluating all flags for a user takes **25 µs** (median) in-process; a cache rebuild every 2 s under load moves p99 by only ~2 ms. Methodology and caveats in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). |
-| **Ops** | Flyway migrations portable across PostgreSQL & H2, Micrometer metrics (Prometheus), health probes, structured JSON logs in `prod`, layered Docker images, CI on both databases. |
+| **Observability** | `docker compose up` includes Prometheus and a provisioned **Grafana dashboard** (SLOs, latency from aggregatable histograms, evaluations by reason, SSE streams per instance, cache rebuilds vs invalidations, rollout decisions as annotations). **SLOs with multi-window burn-rate alerts** (99.9% availability, 99% of evaluations < 50 ms), and the alert rules have **promtool unit tests**: a real outage pages, a past spike or 4xx noise does not. |
+| **Ops** | Flyway migrations portable across PostgreSQL & H2, health probes, structured JSON logs in `prod`, layered Docker images, CI on both databases. |
 | **Dashboard** | Flag list with per-environment kill switches, full targeting editor (rules, segments, rollouts, prerequisites), environment promotion, evaluation debugger, audit log with JSON diffs, stale-flag detection. |
 
 ## Architecture
@@ -76,6 +79,7 @@ docker compose up --build
 
 - Dashboard → http://localhost:3000 (`admin@ffp.local` / `admin123`, also `editor@…/editor123`, `viewer@…/viewer123`)
 - API docs → http://localhost:8080/swagger-ui.html
+- Grafana → http://localhost:3001 (opens on the platform dashboard) · Prometheus alerts → http://localhost:9090/alerts
 - The stack runs **two API replicas** (`:8080`, `:8081`) behind nginx, kept in sync over Redis. Toggle a flag
   through one and evaluate through the other:
 
@@ -176,9 +180,10 @@ All errors are `application/problem+json`; validation failures (422) include an 
 ## Testing
 
 ```bash
-cd backend && mvn verify          # 337 tests: engine, conformance vectors, statistics, rollouts, integration (H2 by default; set FFP_DB_URL to run on PostgreSQL)
+cd backend && mvn verify          # 344 tests: engine, conformance vectors, statistics, rollouts, integration (H2 by default; set FFP_DB_URL to run on PostgreSQL)
 cd frontend && npm test           # component + logic tests (Vitest, Testing Library)
 cd sdk/js && npm test             # 199 tests: conformance vectors, both clients, events, SSE, backoff
+docker run --rm -v $PWD/observability/prometheus:/p -w /p --entrypoint promtool prom/prometheus:v3.5.0 test rules rules.test.yml
 cd loadtest && mvn gatling:test -Dsimulation=ffp.loadtest.SdkEvaluationSimulation -Drps=1000   # against a running API
 ```
 
@@ -210,5 +215,6 @@ frontend/  React dashboard (TanStack Query, React Router)
 sdk/js/    TypeScript SDK (remote + local evaluation clients, engine port)
 conformance/  evaluation vectors shared by the Java engine and the TypeScript SDK
 loadtest/  Gatling load tests (steady-state SDK traffic; SDK traffic while flags change)
+observability/  Prometheus config, SLO recording/alert rules + promtool tests, Grafana provisioning and dashboard
 docs/      design notes and screenshots
 ```
